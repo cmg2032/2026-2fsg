@@ -145,9 +145,14 @@ $('loginForm').onsubmit = async (e) => {
   start();
 };
 
+let lastKey = '';
 async function load(first) {
-  try { S = await api('state'); } catch { return; }
-  renderLive();
+  let next;
+  try { next = await api('state'); } catch { return; }
+  const key = JSON.stringify(next);
+  S = next;
+  // 내용이 바뀌었을 때만 다시 그려서, 버튼을 누르는 순간 화면이 교체돼 클릭이 씹히는 일을 막음
+  if (first || key !== lastKey) { lastKey = key; renderLive(); }
   if (first) { renderSettings(); draft = S.songs.map((s) => ({ ...s })); renderEditor(); }
 }
 

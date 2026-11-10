@@ -61,9 +61,17 @@ let sending = false;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// 서버 쿠키가 지워져도 같은 브라우저에서 중복투표가 화면에 반영되도록 로컬에도 기록
-function localVoted() { try { return JSON.parse(localStorage.getItem('voted') || '[]'); } catch { return []; } }
-function markLocal(id) { try { const v = localVoted(); if (!v.includes(id)) { v.push(id); localStorage.setItem('voted', JSON.stringify(v)); } } catch {} }
+// 서버 쿠키가 지워져도 같은 브라우저에서 투표 여부가 화면에 반영되도록 로컬에도 기록.
+// 운영진이 '전체 투표 초기화'를 하면 epoch 값이 바뀌고, 그때 로컬 기록도 비웁니다.
+function readLocal() { try { return JSON.parse(localStorage.getItem('voted2') || '{}'); } catch { return {}; } }
+function writeLocal(o) { try { localStorage.setItem('voted2', JSON.stringify(o)); } catch {} }
+function syncEpoch(epoch) {
+  try { localStorage.removeItem('voted'); } catch {}
+  const o = readLocal();
+  if (o.epoch !== epoch) writeLocal({ epoch, ids: [] });
+}
+function localVoted() { const o = readLocal(); return S && o.epoch === S.epoch ? o.ids || [] : []; }
+function markLocal(id) { const o = readLocal(); if (!S || o.epoch !== S.epoch) return; o.ids = o.ids || []; if (!o.ids.includes(id)) { o.ids.push(id); writeLocal(o); } }
 
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
@@ -74,6 +82,7 @@ async function load() {
   try {
     const r = await fetch('/api/state', { credentials: 'same-origin', cache: 'no-store' });
     S = await r.json();
+    syncEpoch(S.epoch);
     render();
   } catch {}
 }

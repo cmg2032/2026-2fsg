@@ -34,6 +34,7 @@ function defaultState() {
     phase: 'idle', // idle | performing | voting | closed
     showResults: false,
     votes: {}, // songId -> { deviceId: timestamp }
+    epoch: crypto.randomBytes(6).toString('hex'), // 초기화할 때마다 바뀌는 회차 값
     updatedAt: Date.now(),
   };
 }
@@ -44,6 +45,7 @@ try {
 } catch {
   state = defaultState();
 }
+if (!state.epoch) state.epoch = crypto.randomBytes(6).toString('hex');
 
 let saveTimer = null;
 function save() {
@@ -85,6 +87,7 @@ function publicState(deviceId) {
     phase: state.phase,
     myVotes,
     showResults: state.showResults,
+    epoch: state.epoch,
   };
   if (state.showResults) out.results = results();
   return out;
@@ -258,6 +261,7 @@ const server = http.createServer(async (req, res) => {
 
       if (p === '/api/admin/reset') {
         state.votes = {};
+        state.epoch = crypto.randomBytes(6).toString('hex');
         state.currentSongId = null;
         state.phase = 'idle';
         state.showResults = false;
