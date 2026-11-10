@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0e1116" />
+<title>무대 투표</title>
+<link rel="stylesheet" href="/style.css" />
+<style>
+  .now { text-align: center; padding: 28px 18px 24px; }
+  .now .label { font-size: 13px; color: var(--muted); letter-spacing: 0.04em; }
+  .now .title { font-size: 26px; font-weight: 800; margin: 10px 0 2px; letter-spacing: -0.02em; word-break: keep-all; }
+  .now .artist { color: var(--muted); }
+  .heart {
+    width: 168px; height: 168px; border-radius: 50%; margin: 26px auto 14px; display: grid; place-items: center;
+    background: radial-gradient(circle at 30% 30%, #ff7a92, var(--accent)); color: #fff;
+    font-size: 17px; font-weight: 800; box-shadow: 0 10px 40px rgba(255, 77, 109, 0.35);
+    transition: transform 0.12s;
+  }
+  .heart span { display: block; font-size: 54px; line-height: 1; margin-bottom: 6px; }
+  .heart:active:not(:disabled) { transform: scale(0.94); }
+  .heart.waiting { background: #232a35; box-shadow: none; color: var(--muted); }
+  .heart.done { background: radial-gradient(circle at 30% 30%, #69db7c, #2f9e44); box-shadow: 0 10px 40px rgba(81, 207, 102, 0.3); opacity: 1; }
+  .pulse { animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,77,109,0.5); } 50% { box-shadow: 0 0 0 18px rgba(255,77,109,0); } }
+  .setlist { list-style: none; padding: 0; margin: 0; }
+  .setlist li { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-bottom: 1px solid var(--line); }
+  .setlist li:last-child { border-bottom: 0; }
+  .setlist .no { width: 22px; color: var(--muted); font-size: 13px; text-align: right; }
+  .setlist .t { flex: 1; min-width: 0; }
+  .setlist .t b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .setlist .t small { color: var(--muted); }
+  .setlist li.cur { background: rgba(255, 77, 109, 0.08); border-radius: 10px; }
+  .mark { font-size: 13px; color: var(--accent); white-space: nowrap; }
+  .teams { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .teams .card { text-align: center; padding: 14px; }
+  .teams .n { font-size: 28px; font-weight: 800; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="eventTitle">무대 투표</h1>
+  <div id="eventInfo" class="muted small"></div>
+
+  <div id="now" class="card now" style="margin-top:18px"></div>
+
+  <div id="resultsBox" hidden>
+    <h2>결과</h2>
+    <div class="teams" id="teamTotals"></div>
+  </div>
+
+  <h2>셋리스트</h2>
+  <div class="card" style="padding:6px 12px"><ul class="setlist" id="setlist"></ul></div>
+  <p class="muted small" style="text-align:center;margin-top:22px">한 기기당 무대마다 한 번씩 투표할 수 있어요.</p>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let S = null;
+let sending = false;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// 서버 쿠키가 지워져도 같은 브라우저에서 중복투표가 화면에 반영되도록 로컬에도 기록
+function localVoted() { try { return JSON.parse(localStorage.getItem('voted') || '[]'); } catch { return []; } }
+function markLocal(id) { try { const v = localVoted(); if (!v.includes(id)) { v.push(id); localStorage.setItem('voted', JSON.stringify(v)); } } catch {} }
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/state', { credentials: 'same-origin', cache: 'no-store' });
+    S = await r.json();
+    render();
+  } catch {}
+}
+
+function voted(id) { return S.myVotes.includes(id) || localVoted().includes(id); }
+
+function render() {
+  $('eventTitle').textContent = S.eventTitle;
+  $('eventInfo').textContent = S.eventInfo;
+  document.title = S.eventTitle + ' · 투표';
+
+  const c = S.current;
+  const now = $('now');
+  if (!c || S.phase === 'idle') {
+    now.innerHTML = `<div class="label">잠시만 기다려 주세요</div>
+      <div class="title" style="font-size:20px">곧 무대가 시작돼요</div>
+      <div class="artist small">공연이 끝나면 이 화면에서 투표가 열립니다</div>`;
+  } else {
+    const head = `<div class="label">${S.phase === 'performing' ? '지금 공연 중' : S.phase === 'voting' ? '방금 끝난 무대' : '투표 마감된 무대'}</div>
+      <div style="margin-top:10px"><span class="team-tag team-${c.team}">${esc(S.teams[c.team])}</span></div>
+      <div class="title">${esc(c.title)}</div>
+      <div class="artist">${esc(c.artist)}</div>`;
+    let btn = '';
+    if (voted(c.id)) {
+      btn = `<button class="heart done" disabled><div><span>✓</span>투표 완료</div></button>
+        <div class="muted small">이 무대에 마음을 남겼어요</div>`;
+    } else if (S.phase === 'performing') {
+      btn = `<button class="heart waiting" disabled><div><span>♡</span>공연 후 열려요</div></button>
+        <div class="muted small">무대가 끝나면 버튼이 활성화돼요</div>`;
+    } else if (S.phase === 'voting') {
+      btn = `<button class="heart pulse" id="voteBtn"><div><span>♥</span>좋았어요!</div></button>
+        <div class="small">이 무대가 마음에 들었다면 눌러주세요</div>`;
+    } else {
+      btn = `<button class="heart waiting" disabled><div><span>♡</span>투표 마감</div></button>
+        <div class="muted small">다음 무대를 기다려 주세요</div>`;
+    }
+    now.innerHTML = head + btn;
+    const vb = $('voteBtn');
+    if (vb) vb.onclick = () => vote(c.id);
+  }
+
+  // 결과
+  const rb = $('resultsBox');
+  const res = S.showResults && S.results;
+  rb.hidden = !res;
+  if (res) {
+    $('teamTotals').innerHTML = ['A', 'B'].map((t) => `<div class="card"><span class="team-tag team-${t}">${esc(S.teams[t])}</span><div class="n">${res.teamTotals[t]}</div><div class="muted small">총 득표</div></div>`).join('');
+  }
+  const counts = res ? Object.fromEntries(res.songs.map((s) => [s.id, s.votes])) : null;
+
+  $('setlist').innerHTML = S.songs.map((s) => `
+    <li class="${c && s.id === c.id && S.phase !== 'idle' ? 'cur' : ''}">
+      <span class="no">${s.order}</span>
+      <span class="team-tag team-${s.team}">${esc(S.teams[s.team])}</span>
+      <span class="t"><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span>
+      ${counts ? `<span class="mark">♥ ${counts[s.id]}</span>` : voted(s.id) ? '<span class="mark">♥ 투표함</span>' : ''}
+    </li>`).join('');
+}
+
+async function vote(songId) {
+  if (sending) return;
+  sending = true;
+  try {
+    const r = await fetch('/api/vote', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ songId }) });
+    const d = await r.json();
+    if (r.ok) {
+      markLocal(songId);
+      if (navigator.vibrate) navigator.vibrate(40);
+      toast('투표 완료! 고마워요 ♥');
+    } else {
+      if (d.error && d.error.includes('이미')) markLocal(songId);
+      toast(d.error || '투표에 실패했어요');
+    }
+  } catch { toast('네트워크를 확인해 주세요'); }
+  sending = false;
+  load();
+}
+
+load();
+setInterval(load, 2000);
+document.addEventListener('visibilitychange', () => !document.hidden && load());
+</script>
+</body>
+</html>

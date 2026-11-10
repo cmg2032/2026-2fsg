@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>대형 화면</title>
+<link rel="stylesheet" href="/style.css" />
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  .stage { height: 100vh; display: grid; grid-template-columns: 1fr 34vw; gap: 4vw; padding: 5vh 5vw; align-items: center; }
+  .ev { font-size: 2.4vw; color: var(--muted); font-weight: 700; }
+  .phase { font-size: 2vw; font-weight: 800; margin-top: 4vh; }
+  .phase.voting { color: var(--accent); }
+  .title { font-size: 6vw; font-weight: 900; line-height: 1.1; margin: 2vh 0 1vh; letter-spacing: -0.03em; word-break: keep-all; }
+  .artist { font-size: 2.4vw; color: var(--muted); }
+  .tag { font-size: 1.6vw; padding: 0.3vw 1vw; }
+  .qr { background: #fff; padding: 1.6vw; border-radius: 1.6vw; text-align: center; color: #111; }
+  .qr img { width: 100%; display: block; }
+  .qr .u { font-size: 1.2vw; margin-top: 1vw; word-break: break-all; font-weight: 700; }
+  .totals { display: flex; gap: 3vw; margin-top: 5vh; }
+  .totals div { font-size: 2vw; }
+  .totals b { display: block; font-size: 5vw; }
+  .ranking { margin-top: 3vh; font-size: 1.5vw; }
+  .ranking li { margin: 0.4vh 0; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div>
+    <div class="ev" id="ev"></div>
+    <div id="main"></div>
+  </div>
+  <div class="qr">
+    <img id="qr" alt="" onerror="this.style.display='none'" />
+    <div class="u" id="url"></div>
+    <div style="font-size:1.4vw;margin-top:.6vw">휴대폰으로 스캔해서 투표하세요</div>
+  </div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const voteUrl = location.origin + '/';
+$('url').textContent = voteUrl.replace(/^https?:\/\//, '');
+$('qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=0&data=' + encodeURIComponent(voteUrl);
+
+async function load() {
+  let S;
+  try { S = await (await fetch('/api/state', { cache: 'no-store' })).json(); } catch { return; }
+  $('ev').textContent = S.eventTitle;
+  const c = S.current;
+  const res = S.showResults && S.results;
+  let html = '';
+  if (res) {
+    const top = [...res.songs].sort((a, b) => b.votes - a.votes).slice(0, 5);
+    html = `<div class="phase">결과 발표</div>
+      <div class="totals">${['A', 'B'].map((t) => `<div><span class="team-tag team-${t} tag">${esc(S.teams[t])}</span><b>♥ ${res.teamTotals[t]}</b></div>`).join('')}</div>
+      <ol class="ranking">${top.map((s) => `<li><span class="team-tag team-${s.team}">${esc(S.teams[s.team])}</span> ${esc(s.title)} — ♥ ${s.votes}</li>`).join('')}</ol>`;
+  } else if (!c || S.phase === 'idle') {
+    html = `<div class="phase">곧 무대가 시작됩니다</div><div class="title" style="font-size:4vw">QR을 미리 스캔해 두세요</div>`;
+  } else {
+    const label = { performing: 'NOW PLAYING', voting: '♥ 지금 투표하세요!', closed: '투표 마감' }[S.phase];
+    html = `<div class="phase ${S.phase}">${label}</div>
+      <div style="margin-top:2vh"><span class="team-tag team-${c.team} tag">${esc(S.teams[c.team])}</span></div>
+      <div class="title">${esc(c.title)}</div>
+      <div class="artist">${esc(c.artist)}</div>`;
+  }
+  $('main').innerHTML = html;
+}
+load();
+setInterval(load, 2000);
+</script>
+</body>
+</html>

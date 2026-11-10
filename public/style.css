@@ -1,0 +1,49 @@
+:root {
+  --bg: #0e1116;
+  --card: #171c24;
+  --line: #262d38;
+  --text: #eef1f5;
+  --muted: #8b95a5;
+  --accent: #ff4d6d;
+  --a: #4dabf7;
+  --b: #ffb347;
+  --ok: #51cf66;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 520px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: 22px; margin: 8px 0 4px; letter-spacing: -0.02em; }
+h2 { font-size: 15px; color: var(--muted); font-weight: 600; margin: 28px 0 10px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+.team-tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.team-A { color: var(--a); background: rgba(77, 171, 247, 0.14); }
+.team-B { color: var(--b); background: rgba(255, 179, 71, 0.14); }
+button { font: inherit; cursor: pointer; border: 0; border-radius: 12px; }
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+.btn { padding: 10px 14px; background: #232a35; color: var(--text); border: 1px solid var(--line); font-size: 14px; }
+.btn:hover:not(:disabled) { background: #2b3441; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+.btn-primary:hover:not(:disabled) { background: #ff6382; }
+.btn-danger { color: #ff8787; }
+input, textarea, select {
+  font: inherit; color: var(--text); background: #0f1319; border: 1px solid var(--line);
+  border-radius: 10px; padding: 9px 11px; width: 100%;
+}
+textarea { min-height: 70px; resize: vertical; }
+label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+.row { display: flex; gap: 8px; align-items: center; }
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  background: #2b3441; color: var(--text); padding: 10px 16px; border-radius: 999px;
+  font-size: 14px; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 10;
+}
+.toast.show { opacity: 1; }
+.bar { height: 8px; background: #0f1319; border-radius: 99px; overflow: hidden; }
+.bar > i { display: block; height: 100%; border-radius: 99px; transition: width 0.4s; }

@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>운영 콘솔</title>
+<link rel="stylesheet" href="/style.css" />
+<style>
+  .wrap { max-width: 760px; }
+  .status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+  .dot.performing { background: var(--b); }
+  .dot.voting { background: var(--accent); animation: blink 1s infinite; }
+  .dot.closed { background: var(--ok); }
+  @keyframes blink { 50% { opacity: 0.3; } }
+  .big { font-size: 20px; font-weight: 800; }
+  .songs { display: flex; flex-direction: column; gap: 8px; }
+  .song { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #131820; }
+  .song.cur { border-color: var(--accent); background: rgba(255, 77, 109, 0.06); }
+  .song .no { color: var(--muted); text-align: right; font-size: 13px; }
+  .song .info b { font-weight: 700; }
+  .song .ctl { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .song .ctl .btn { padding: 7px 10px; font-size: 13px; }
+  .count { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--accent); min-width: 52px; text-align: right; }
+  .teams { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .teams .n { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .edit-row { display: grid; grid-template-columns: 24px 96px 1fr 1fr 68px; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .edit-row .btn { padding: 6px 8px; font-size: 12px; }
+  .switch { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .switch input { width: auto; }
+  @media (max-width: 560px) {
+    .song { grid-template-columns: 22px 1fr; }
+    .song .ctl { grid-column: 1 / -1; justify-content: flex-start; }
+    .edit-row { grid-template-columns: 20px 80px 1fr; }
+    .edit-row .artist, .edit-row .mv { grid-column: 2 / -1; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- 로그인 -->
+  <div id="login" class="card" style="max-width:360px;margin:60px auto">
+    <h1>운영 콘솔</h1>
+    <p class="muted small">관리자 비밀번호를 입력하세요.</p>
+    <form id="loginForm">
+      <input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password" />
+      <button class="btn btn-primary" style="width:100%;margin-top:10px">로그인</button>
+    </form>
+  </div>
+
+  <!-- 콘솔 -->
+  <div id="console" hidden>
+    <div class="row" style="justify-content:space-between">
+      <h1>운영 콘솔</h1>
+      <div class="row">
+        <a class="btn" href="/screen" target="_blank" style="text-decoration:none">대형 화면 ↗</a>
+        <a class="btn" href="/" target="_blank" style="text-decoration:none">관객 화면 ↗</a>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="status"><span class="dot" id="dot"></span><span class="big" id="statusText"></span></div>
+      <div class="muted small" id="statusSub" style="margin-top:4px"></div>
+      <div class="row" style="margin-top:14px;flex-wrap:wrap" id="quick"></div>
+    </div>
+
+    <h2>팀 합계 <span class="small" id="devices"></span></h2>
+    <div class="teams" id="teamTotals"></div>
+    <div class="row" style="margin-top:12px;justify-content:space-between;flex-wrap:wrap">
+      <label class="switch"><input type="checkbox" id="showResults" /> 관객 화면·대형 화면에 결과 공개</label>
+      <button class="btn" id="exportBtn">결과 CSV 다운로드</button>
+    </div>
+
+    <h2>진행 (공연 순서)</h2>
+    <div class="songs" id="songs"></div>
+
+    <h2>행사 정보</h2>
+    <div class="card">
+      <label>행사명</label><input id="evTitle" />
+      <label>안내 문구 (관객 화면 상단)</label><textarea id="evInfo"></textarea>
+      <div class="row">
+        <div style="flex:1"><label>A팀 이름</label><input id="teamA" /></div>
+        <div style="flex:1"><label>B팀 이름</label><input id="teamB" /></div>
+      </div>
+      <button class="btn btn-primary" id="saveSettings" style="margin-top:12px">저장</button>
+    </div>
+
+    <h2>곡 목록 편집</h2>
+    <div class="card">
+      <p class="muted small" style="margin-top:0">공연 순서대로 정렬하세요. 곡을 삭제하면 그 곡의 득표도 함께 지워져요.</p>
+      <div id="editor"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="addSong">+ 곡 추가</button>
+        <span style="flex:1"></span>
+        <button class="btn" id="cancelSongs">취소</button>
+        <button class="btn btn-primary" id="saveSongs">저장</button>
+      </div>
+    </div>
+
+    <h2>리허설 기록 지우기</h2>
+    <div class="card">
+      <p class="muted small" style="margin-top:0">모든 투표와 진행 상태를 초기화합니다. 곡 목록과 행사 정보는 유지돼요. 리허설 후 본 공연 전에 꼭 눌러주세요.</p>
+      <button class="btn btn-danger" id="resetBtn">전체 투표 초기화</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let token = sessionStorage.getItem('adminToken') || '';
+let S = null;
+let draft = null;
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+async function api(path, body) {
+  const r = await fetch('/api/admin/' + path, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (r.status === 401) { logout(); throw new Error('auth'); }
+  const d = await r.json();
+  if (!r.ok) { toast(d.error || '오류'); throw new Error(d.error); }
+  return d;
+}
+
+function logout() {
+  token = ''; sessionStorage.removeItem('adminToken');
+  $('console').hidden = true; $('login').hidden = false;
+}
+
+$('loginForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const r = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: $('pw').value }) });
+  const d = await r.json();
+  if (!r.ok) return toast(d.error);
+  token = d.token; sessionStorage.setItem('adminToken', token);
+  start();
+};
+
+async function load(first) {
+  try { S = await api('state'); } catch { return; }
+  renderLive();
+  if (first) { renderSettings(); draft = S.songs.map((s) => ({ ...s })); renderEditor(); }
+}
+
+const PHASE = { idle: '대기 중', performing: '공연 중', voting: '투표 진행 중', closed: '투표 마감' };
+
+function renderLive() {
+  const cur = S.songs.find((s) => S.current && s.id === S.current.id);
+  $('dot').className = 'dot ' + S.phase;
+  $('statusText').textContent = cur ? `${PHASE[S.phase]} · ${cur.order}. ${cur.title}` : '대기 중';
+  $('statusSub').textContent = cur ? [S.teams[cur.team], cur.artist, `현재 ♥ ${cur.votes}`].filter(Boolean).join(' · ') : '아래 목록에서 첫 곡의 [공연 시작]을 누르면 시작돼요.';
+
+  // 빠른 진행 버튼: 현재 상태에서 자연스러운 다음 동작
+  const q = $('quick');
+  const btns = [];
+  const idx = cur ? S.songs.indexOf(cur) : -1;
+  const next = S.songs[idx + 1];
+  if (cur && S.phase === 'performing') btns.push(['투표 열기', 'open', cur.id, true]);
+  if (cur && S.phase === 'voting') btns.push(['투표 마감', 'close', cur.id, true]);
+  if ((!cur || S.phase === 'closed') && (next || !cur)) {
+    const n = cur ? next : S.songs[0];
+    if (n) btns.push([`다음 곡 공연 시작 → ${n.order}. ${n.title}`, 'perform', n.id, true]);
+  }
+  if (cur) btns.push(['대기 화면으로', 'idle', null, false]);
+  q.innerHTML = btns.map(([t, a, id, p], i) => `<button class="btn ${p ? 'btn-primary' : ''}" data-i="${i}">${esc(t)}</button>`).join('');
+  q.querySelectorAll('button').forEach((b) => { const [, a, id] = btns[b.dataset.i]; b.onclick = () => control(a, id); });
+
+  $('teamTotals').innerHTML = ['A', 'B'].map((t) => `<div class="card"><span class="team-tag team-${t}">${esc(S.teams[t])}</span><div class="n">${S.teamTotals[t]}</div></div>`).join('');
+  $('devices').textContent = `· 참여 기기 ${S.totalDevices}대`;
+  $('showResults').checked = S.showResults;
+
+  const max = Math.max(1, ...S.songs.map((s) => s.votes));
+  $('songs').innerHTML = S.songs.map((s) => {
+    const isCur = cur && cur.id === s.id;
+    const ph = isCur ? S.phase : null;
+    return `<div class="song ${isCur ? 'cur' : ''}">
+      <span class="no">${s.order}</span>
+      <div class="info">
+        <span class="team-tag team-${s.team}">${esc(S.teams[s.team])}</span> <b>${esc(s.title)}</b>
+        <span class="muted small">${esc(s.artist)}</span>
+        <div class="bar" style="margin-top:6px"><i style="width:${(s.votes / max) * 100}%;background:var(--${s.team === 'A' ? 'a' : 'b'})"></i></div>
+      </div>
+      <div class="ctl">
+        <span class="count">♥ ${s.votes}</span>
+        <button class="btn" data-a="perform" data-id="${s.id}" ${ph === 'performing' ? 'disabled' : ''}>공연 시작</button>
+        <button class="btn ${ph === 'performing' ? 'btn-primary' : ''}" data-a="open" data-id="${s.id}" ${ph === 'voting' ? 'disabled' : ''}>${ph === 'closed' ? '투표 재개' : '투표 열기'}</button>
+        <button class="btn ${ph === 'voting' ? 'btn-primary' : ''}" data-a="close" data-id="${s.id}" ${ph !== 'voting' ? 'disabled' : ''}>마감</button>
+      </div>
+    </div>`;
+  }).join('');
+  $('songs').querySelectorAll('button').forEach((b) => (b.onclick = () => control(b.dataset.a, b.dataset.id)));
+}
+
+async function control(action, songId, value) {
+  try { await api('control', { action, songId, value }); } catch { return; }
+  load();
+}
+
+$('showResults').onchange = (e) => control('showResults', null, e.target.checked);
+
+function renderSettings() {
+  $('evTitle').value = S.eventTitle;
+  $('evInfo').value = S.eventInfo;
+  $('teamA').value = S.teams.A;
+  $('teamB').value = S.teams.B;
+}
+
+$('saveSettings').onclick = async () => {
+  try { await api('settings', { eventTitle: $('evTitle').value, eventInfo: $('evInfo').value, teams: { A: $('teamA').value, B: $('teamB').value } }); } catch { return; }
+  toast('저장했어요'); load();
+};
+
+function renderEditor() {
+  const teamOpt = (v) => ['A', 'B'].map((t) => `<option value="${t}" ${v === t ? 'selected' : ''}>${esc(S.teams[t])}</option>`).join('');
+  $('editor').innerHTML = draft.map((s, i) => `
+    <div class="edit-row" data-i="${i}">
+      <span class="muted small" style="text-align:right">${i + 1}</span>
+      <select data-k="team">${teamOpt(s.team)}</select>
+      <input data-k="title" value="${esc(s.title)}" placeholder="곡 제목" />
+      <input data-k="artist" class="artist" value="${esc(s.artist)}" placeholder="공연자 / 원곡 가수" />
+      <div class="row mv" style="gap:4px">
+        <button class="btn" data-m="up" ${i === 0 ? 'disabled' : ''}>▲</button>
+        <button class="btn" data-m="down" ${i === draft.length - 1 ? 'disabled' : ''}>▼</button>
+        <button class="btn btn-danger" data-m="del">✕</button>
+      </div>
+    </div>`).join('');
+  $('editor').querySelectorAll('.edit-row').forEach((row) => {
+    const i = +row.dataset.i;
+    row.querySelectorAll('[data-k]').forEach((el) => (el.oninput = () => (draft[i][el.dataset.k] = el.value)));
+    row.querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => {
+      const m = b.dataset.m;
+      if (m === 'del') { if (!confirm(`"${draft[i].title}" 곡을 삭제할까요?`)) return; draft.splice(i, 1); }
+      else { const j = m === 'up' ? i - 1 : i + 1; [draft[i], draft[j]] = [draft[j], draft[i]]; }
+      renderEditor();
+    }));
+  });
+  const a = draft.filter((s) => s.team === 'A').length, b = draft.length - a;
+  $('editor').insertAdjacentHTML('beforeend', `<p class="muted small">총 ${draft.length}곡 · ${esc(S.teams.A)} ${a}곡 / ${esc(S.teams.B)} ${b}곡</p>`);
+}
+
+$('addSong').onclick = () => { draft.push({ id: '', team: 'A', title: '', artist: '' }); renderEditor(); };
+$('cancelSongs').onclick = () => { draft = S.songs.map((s) => ({ ...s })); renderEditor(); };
+$('saveSongs').onclick = async () => {
+  try { await api('songs', { songs: draft }); } catch { return; }
+  toast('곡 목록을 저장했어요'); await load(true);
+};
+
+$('resetBtn').onclick = async () => {
+  const v = prompt('모든 투표가 삭제됩니다. 진행하려면 "초기화"라고 입력하세요.');
+  if (v !== '초기화') return;
+  try { await api('reset', {}); } catch { return; }
+  toast('초기화했어요'); load();
+};
+
+$('exportBtn').onclick = async () => {
+  const r = await fetch('/api/admin/export', { headers: { 'x-admin-token': token } });
+  if (!r.ok) return toast('다운로드 실패');
+  const url = URL.createObjectURL(await r.blob());
+  const a = document.createElement('a'); a.href = url; a.download = 'vote-results.csv'; a.click();
+  URL.revokeObjectURL(url);
+};
+
+function start() {
+  $('login').hidden = true; $('console').hidden = false;
+  load(true);
+  clearInterval(start._t); start._t = setInterval(() => load(false), 1500);
+}
+
+if (token) start();
+</script>
+</body>
+</html>
