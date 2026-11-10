@@ -1,0 +1,13 @@
+{
+  "name": "stage-vote",
+  "version": "1.0.0",
+  "description": "동아리 공연 무대별 투표 (관객 화면 / 운영 콘솔 / 대형 화면)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
