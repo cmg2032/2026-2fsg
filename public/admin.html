@@ -4,89 +4,180 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex" />
-<title>운영 콘솔</title>
-<link rel="stylesheet" href="/style.css" />
+<meta name="theme-color" content="#262a78" />
+<title>운영 콘솔 · Feel So Good</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 <style>
-  .wrap { max-width: 760px; }
-  .status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  @font-face { font-family: 'Audiowide'; src: url('/fonts/audiowide.woff2') format('woff2'); font-display: swap; }
+  @font-face { font-family: 'Share Tech Mono'; src: url('/fonts/sharetechmono.woff2') format('woff2'); font-display: swap; }
+  :root {
+    --indigo: #262a78; --lav: #b8bdf6; --lav-2: #dfe2ff; --lime: #c8f25a; --teal: #3cc7b4; --red: #ff7a90;
+    --ink: #f3f4ff; --muted: #a9addf; --glass: rgba(30, 33, 100, 0.72); --field: rgba(16, 18, 60, 0.6);
+    --line: rgba(184, 189, 246, 0.26);
+    --a: var(--lime); --b: var(--lav);
+    --display: 'Audiowide', 'Pretendard', sans-serif; --mono: 'Share Tech Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--indigo); }
+  body { margin: 0; color: var(--ink); line-height: 1.5;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; -webkit-font-smoothing: antialiased; }
+  .bg { position: fixed; inset: 0; z-index: -2;
+    background: linear-gradient(180deg, rgba(30, 33, 100, 0.9), rgba(22, 24, 74, 0.97)), url('/bg.jpg') center / cover no-repeat; }
+  .scan { position: fixed; inset: 0; z-index: -1; pointer-events: none; mix-blend-mode: overlay;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 3px); }
+
+  .wrap { max-width: 820px; margin: 0 auto; padding: 22px 18px 60px; }
+  .brandbar { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .brand { font-family: var(--display); font-size: 28px; line-height: 1; margin: 0; text-shadow: 2px 2px 0 var(--lav); }
+  .brand small { display: block; font-family: 'Pretendard', sans-serif; font-size: 12px; font-weight: 600; color: var(--muted); text-shadow: none; margin-top: 8px; letter-spacing: 0.04em; }
+  h2 { font-family: var(--display); font-weight: 400; font-size: 14px; letter-spacing: 0.14em; color: var(--lav-2);
+    margin: 30px 0 10px; display: flex; align-items: center; gap: 10px; }
+  h2::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  h2 .ko { font-family: 'Pretendard', sans-serif; font-size: 12px; letter-spacing: 0; color: var(--muted); }
+  .muted { color: var(--muted); } .small { font-size: 13px; }
+  .row { display: flex; gap: 8px; align-items: center; }
+
+  .card { background: var(--glass); border: 1px solid var(--line); border-radius: 4px; padding: 18px; position: relative;
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .card.corner::before, .card.corner::after { content: ''; position: absolute; width: 12px; height: 12px; border: 2px solid var(--lime); }
+  .card.corner::before { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
+  .card.corner::after { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
+
+  button { font: inherit; cursor: pointer; }
+  .btn { padding: 9px 14px; font-size: 14px; font-weight: 600; color: var(--ink); background: rgba(184,189,246,0.1);
+    border: 1px solid var(--line); border-radius: 3px; text-decoration: none; display: inline-block; }
+  .btn:hover:not(:disabled) { background: rgba(184,189,246,0.2); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-primary { background: var(--lime); border-color: var(--lime); color: #1d2160; font-weight: 800;
+    box-shadow: -2px 0 0 var(--teal), 2px 0 0 var(--lav); }
+  .btn-primary:hover:not(:disabled) { background: #d6f87a; }
+  .btn-danger { color: var(--red); border-color: rgba(255,122,144,0.4); }
+
+  input, textarea, select { font: inherit; color: var(--ink); background: var(--field); border: 1px solid var(--line);
+    border-radius: 3px; padding: 9px 11px; width: 100%; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--lime); }
+  select option { background: #1d2160; }
+  textarea { min-height: 70px; resize: vertical; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; letter-spacing: 0.02em; }
+
+  .team-tag { display: inline-block; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 2px; color: #1d2160; letter-spacing: 0.04em; }
+  .team-A { background: var(--lime); } .team-B { background: var(--lav); }
+  .bar { height: 6px; background: rgba(16,18,60,0.7); overflow: hidden; }
+  .bar > i { display: block; height: 100%; transition: width 0.4s; }
+
+  /* 상태 */
+  .status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
-  .dot.performing { background: var(--b); }
-  .dot.voting { background: var(--accent); animation: blink 1s infinite; }
-  .dot.closed { background: var(--ok); }
+  .dot.performing { background: #ff5f7e; animation: blink 1s infinite; }
+  .dot.voting { background: var(--lime); animation: blink 0.8s infinite; box-shadow: 0 0 10px var(--lime); }
+  .dot.closed { background: var(--lav); }
   @keyframes blink { 50% { opacity: 0.3; } }
   .big { font-size: 20px; font-weight: 800; }
+
+  /* 득표 순위 */
+  .rank { list-style: none; margin: 0; padding: 0; }
+  .rank li { display: grid; grid-template-columns: 40px 1fr 140px 56px; gap: 12px; align-items: center; padding: 10px 6px; border-bottom: 1px solid var(--line); }
+  .rank li:last-child { border-bottom: 0; }
+  .rank .pos { font-family: var(--display); font-size: 18px; color: var(--muted); text-align: center; }
+  .rank li.top .pos { color: var(--lime); font-size: 22px; }
+  .rank li.top1 { background: linear-gradient(90deg, rgba(200,242,90,0.14), transparent); }
+  .rank .t { min-width: 0; }
+  .rank .t b { font-weight: 700; }
+  .rank .t .line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank .t small { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank .v { font-weight: 900; font-size: 18px; text-align: right; font-variant-numeric: tabular-nums; }
+  .rank li.zero .v, .rank li.zero .t b { color: var(--muted); }
+  .switch { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 0; color: var(--ink); }
+  .switch input { width: 18px; height: 18px; accent-color: var(--lime); }
+
+  /* 진행 */
   .songs { display: flex; flex-direction: column; gap: 8px; }
-  .song { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #131820; }
-  .song.cur { border-color: var(--accent); background: rgba(255, 77, 109, 0.06); }
-  .song .no { color: var(--muted); text-align: right; font-size: 13px; }
+  .song { display: grid; grid-template-columns: 30px 1fr auto; gap: 12px; align-items: center; padding: 12px 14px;
+    border: 1px solid var(--line); border-radius: 3px; background: rgba(16,18,60,0.45); }
+  .song.cur { border-color: var(--lime); background: linear-gradient(90deg, rgba(200,242,90,0.12), rgba(16,18,60,0.45)); }
+  .song .no { font-family: var(--display); color: var(--muted); font-size: 15px; text-align: right; }
+  .song.cur .no { color: var(--lime); }
   .song .info b { font-weight: 700; }
-  .song .ctl { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .song .ctl { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
   .song .ctl .btn { padding: 7px 10px; font-size: 13px; }
-  .count { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--accent); min-width: 52px; text-align: right; }
-  .teams { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .teams .n { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; }
-  .edit-row { display: grid; grid-template-columns: 24px 96px 1fr 1fr 68px; gap: 6px; align-items: center; margin-bottom: 6px; }
-  .edit-row .btn { padding: 6px 8px; font-size: 12px; }
-  .switch { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-  .switch input { width: auto; }
-  @media (max-width: 560px) {
-    .song { grid-template-columns: 22px 1fr; }
+  .count { font-variant-numeric: tabular-nums; font-weight: 900; color: var(--lime); min-width: 52px; text-align: right; }
+
+  .edit-row { display: grid; grid-template-columns: 24px 110px 1fr 1fr 96px; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .edit-row .btn { padding: 6px 9px; font-size: 12px; }
+  .edit-row .num { font-family: var(--display); color: var(--muted); font-size: 12px; text-align: right; }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 10;
+    background: var(--lime); color: #1d2160; font-weight: 800; padding: 10px 18px; border-radius: 2px;
+    box-shadow: -3px 0 0 var(--teal), 3px 0 0 var(--lav); opacity: 0; transition: opacity 0.2s; pointer-events: none; font-size: 14px; }
+  .toast.show { opacity: 1; }
+
+  .login { max-width: 380px; margin: 12vh auto 0; text-align: center; }
+  .login .brand { font-size: 40px; line-height: 1.02; }
+  .login .brand span { display: block; }
+
+  @media (max-width: 600px) {
+    .rank li { grid-template-columns: 30px 1fr 52px; }
+    .rank li .bar { grid-column: 2 / -1; grid-row: 2; }
+    .song { grid-template-columns: 24px 1fr; }
     .song .ctl { grid-column: 1 / -1; justify-content: flex-start; }
-    .edit-row { grid-template-columns: 20px 80px 1fr; }
+    .edit-row { grid-template-columns: 20px 90px 1fr; }
     .edit-row .artist, .edit-row .mv { grid-column: 2 / -1; }
   }
 </style>
 </head>
 <body>
+<div class="bg"></div>
+<div class="scan" aria-hidden="true"></div>
 <div class="wrap">
   <!-- 로그인 -->
-  <div id="login" class="card" style="max-width:360px;margin:60px auto">
-    <h1>운영 콘솔</h1>
-    <p class="muted small">관리자 비밀번호를 입력하세요.</p>
-    <form id="loginForm">
+  <div id="login" class="login">
+    <h1 class="brand"><span>Feel</span><span>So</span><span>Good</span><small>운영 콘솔</small></h1>
+    <form id="loginForm" class="card corner" style="margin-top:28px;text-align:left">
+      <label style="margin-top:0">관리자 비밀번호</label>
       <input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password" />
-      <button class="btn btn-primary" style="width:100%;margin-top:10px">로그인</button>
+      <button class="btn btn-primary" style="width:100%;margin-top:12px">로그인</button>
     </form>
   </div>
 
   <!-- 콘솔 -->
   <div id="console" hidden>
-    <div class="row" style="justify-content:space-between">
-      <h1>운영 콘솔</h1>
+    <div class="brandbar">
+      <h1 class="brand">Feel So Good<small>운영 콘솔 · STAGE CONTROL</small></h1>
       <div class="row">
-        <a class="btn" href="/screen" target="_blank" style="text-decoration:none">대형 화면 ↗</a>
-        <a class="btn" href="/" target="_blank" style="text-decoration:none">관객 화면 ↗</a>
+        <a class="btn" href="/screen" target="_blank">대형 화면 ↗</a>
+        <a class="btn" href="/" target="_blank">관객 화면 ↗</a>
       </div>
     </div>
 
-    <div class="card" style="margin-top:14px">
+    <h2>NOW <span class="ko">현재 상태</span></h2>
+    <div class="card corner">
       <div class="status"><span class="dot" id="dot"></span><span class="big" id="statusText"></span></div>
       <div class="muted small" id="statusSub" style="margin-top:4px"></div>
       <div class="row" style="margin-top:14px;flex-wrap:wrap" id="quick"></div>
     </div>
 
-    <h2>팀 합계 <span class="small" id="devices"></span></h2>
-    <div class="teams" id="teamTotals"></div>
+    <h2>RANKING <span class="ko">곡별 득표 순위 <span id="devices"></span></span></h2>
+    <div class="card" style="padding:6px 14px"><ol class="rank" id="ranking"></ol></div>
     <div class="row" style="margin-top:12px;justify-content:space-between;flex-wrap:wrap">
       <label class="switch"><input type="checkbox" id="showResults" /> 관객 화면·대형 화면에 결과 공개</label>
       <button class="btn" id="exportBtn">결과 CSV 다운로드</button>
     </div>
 
-    <h2>진행 (공연 순서)</h2>
+    <h2>CUE SHEET <span class="ko">진행 · 공연 순서</span></h2>
     <div class="songs" id="songs"></div>
 
-    <h2>행사 정보</h2>
+    <h2>EVENT <span class="ko">행사 정보</span></h2>
     <div class="card">
-      <label>행사명</label><input id="evTitle" />
-      <label>안내 문구 (관객 화면 상단)</label><textarea id="evInfo"></textarea>
+      <label style="margin-top:0">행사명</label><input id="evTitle" />
+      <label>안내 문구 (관객 화면 하단)</label><textarea id="evInfo"></textarea>
       <div class="row">
         <div style="flex:1"><label>A팀 이름</label><input id="teamA" /></div>
         <div style="flex:1"><label>B팀 이름</label><input id="teamB" /></div>
       </div>
-      <button class="btn btn-primary" id="saveSettings" style="margin-top:12px">저장</button>
+      <button class="btn btn-primary" id="saveSettings" style="margin-top:14px">저장</button>
     </div>
 
-    <h2>곡 목록 편집</h2>
+    <h2>SETLIST <span class="ko">곡 목록 편집</span></h2>
     <div class="card">
       <p class="muted small" style="margin-top:0">공연 순서대로 정렬하세요. 곡을 삭제하면 그 곡의 득표도 함께 지워져요.</p>
       <div id="editor"></div>
@@ -98,7 +189,7 @@
       </div>
     </div>
 
-    <h2>리허설 기록 지우기</h2>
+    <h2>RESET <span class="ko">리허설 기록 지우기</span></h2>
     <div class="card">
       <p class="muted small" style="margin-top:0">모든 투표와 진행 상태를 초기화합니다. 곡 목록과 행사 정보는 유지돼요. 리허설 후 본 공연 전에 꼭 눌러주세요.</p>
       <button class="btn btn-danger" id="resetBtn">전체 투표 초기화</button>
@@ -179,7 +270,20 @@ function renderLive() {
   q.innerHTML = btns.map(([t, a, id, p], i) => `<button class="btn ${p ? 'btn-primary' : ''}" data-i="${i}">${esc(t)}</button>`).join('');
   q.querySelectorAll('button').forEach((b) => { const [, a, id] = btns[b.dataset.i]; b.onclick = () => control(a, id); });
 
-  $('teamTotals').innerHTML = ['A', 'B'].map((t) => `<div class="card"><span class="team-tag team-${t}">${esc(S.teams[t])}</span><div class="n">${S.teamTotals[t]}</div></div>`).join('');
+  // 곡별 득표 순위 (동점이면 같은 순위, 같은 표수 안에서는 공연 순서대로)
+  const sorted = [...S.songs].sort((a, b) => b.votes - a.votes || a.order - b.order);
+  const top = Math.max(1, sorted[0] ? sorted[0].votes : 1);
+  let pos = 0;
+  $('ranking').innerHTML = sorted.map((s, i) => {
+    if (i === 0 || s.votes !== sorted[i - 1].votes) pos = i + 1;
+    const cls = [s.votes > 0 && pos <= 3 ? 'top' : '', s.votes > 0 && pos === 1 ? 'top1' : '', s.votes === 0 ? 'zero' : ''].join(' ');
+    return `<li class="${cls}">
+      <span class="pos">${pos}</span>
+      <span class="t"><div class="line"><span class="team-tag team-${s.team}">${esc(S.teams[s.team])}</span> <b>${esc(s.title)}</b></div><small>${esc(s.artist)}</small></span>
+      <div class="bar"><i style="width:${(s.votes / top) * 100}%;background:var(--${s.team === 'A' ? 'a' : 'b'})"></i></div>
+      <span class="v">♥ ${s.votes}</span>
+    </li>`;
+  }).join('');
   $('devices').textContent = `· 참여 기기 ${S.totalDevices}대`;
   $('showResults').checked = S.showResults;
 
@@ -228,7 +332,7 @@ function renderEditor() {
   const teamOpt = (v) => ['A', 'B'].map((t) => `<option value="${t}" ${v === t ? 'selected' : ''}>${esc(S.teams[t])}</option>`).join('');
   $('editor').innerHTML = draft.map((s, i) => `
     <div class="edit-row" data-i="${i}">
-      <span class="muted small" style="text-align:right">${i + 1}</span>
+      <span class="num">${i + 1}</span>
       <select data-k="team">${teamOpt(s.team)}</select>
       <input data-k="title" value="${esc(s.title)}" placeholder="곡 제목" />
       <input data-k="artist" class="artist" value="${esc(s.artist)}" placeholder="공연자 / 원곡 가수" />
