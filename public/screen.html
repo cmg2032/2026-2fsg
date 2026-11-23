@@ -4,69 +4,204 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex" />
-<title>대형 화면</title>
-<link rel="stylesheet" href="/style.css" />
+<title>Feel So Good · 대형 화면</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<script src="/qrcode.js"></script>
 <style>
-  html, body { height: 100%; overflow: hidden; }
-  .stage { height: 100vh; display: grid; grid-template-columns: 1fr 34vw; gap: 4vw; padding: 5vh 5vw; align-items: center; }
-  .ev { font-size: 2.4vw; color: var(--muted); font-weight: 700; }
-  .phase { font-size: 2vw; font-weight: 800; margin-top: 4vh; }
-  .phase.voting { color: var(--accent); }
-  .title { font-size: 6vw; font-weight: 900; line-height: 1.1; margin: 2vh 0 1vh; letter-spacing: -0.03em; word-break: keep-all; }
-  .artist { font-size: 2.4vw; color: var(--muted); }
-  .tag { font-size: 1.6vw; padding: 0.3vw 1vw; }
-  .qr { background: #fff; padding: 1.6vw; border-radius: 1.6vw; text-align: center; color: #111; }
-  .qr img { width: 100%; display: block; }
-  .qr .u { font-size: 1.2vw; margin-top: 1vw; word-break: break-all; font-weight: 700; }
-  .totals { display: flex; gap: 3vw; margin-top: 5vh; }
-  .totals div { font-size: 2vw; }
-  .totals b { display: block; font-size: 5vw; }
-  .ranking { margin-top: 3vh; font-size: 1.5vw; }
-  .ranking li { margin: 0.4vh 0; }
+  @font-face { font-family: 'Audiowide'; src: url('/fonts/audiowide.woff2') format('woff2'); font-display: swap; }
+  @font-face { font-family: 'Share Tech Mono'; src: url('/fonts/sharetechmono.woff2') format('woff2'); font-display: swap; }
+  :root {
+    --indigo: #262a78; --lav: #b8bdf6; --lav-2: #dfe2ff; --lime: #c8f25a; --teal: #3cc7b4;
+    --ink: #f3f4ff; --muted: #a9addf; --glass: rgba(34, 37, 110, 0.62); --line: rgba(184, 189, 246, 0.3);
+    --display: 'Audiowide', 'Pretendard', sans-serif; --mono: 'Share Tech Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--indigo); }
+  html, body { margin: 0; height: 100%; overflow: hidden; color: var(--ink);
+    font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; -webkit-font-smoothing: antialiased; }
+
+  .bg { position: fixed; inset: 0; z-index: -3;
+    background: linear-gradient(100deg, rgba(30, 33, 100, 0.92) 0%, rgba(38, 42, 120, 0.7) 55%, rgba(38, 42, 120, 0.55) 100%),
+                url('/bg.jpg') center / cover no-repeat; }
+  .scan { position: fixed; inset: 0; z-index: -1; pointer-events: none; mix-blend-mode: overlay;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 3px); }
+  .glyphs { position: fixed; top: 0; bottom: 0; left: 0; width: 36vw; z-index: -2; overflow: hidden;
+    font-family: var(--mono); font-size: 0.85vw; line-height: 1.6; letter-spacing: 0.4em; white-space: pre;
+    color: var(--lav-2); opacity: 0.18; padding: 0.6vw 0 0 0.8vw;
+    -webkit-mask-image: linear-gradient(90deg, #000 30%, transparent); mask-image: linear-gradient(90deg, #000 30%, transparent); }
+
+  .stage { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 27vw; grid-template-rows: auto 1fr auto; column-gap: 4vw; padding: 3.2vw 4vw 0; }
+
+  /* 상단 */
+  .top { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: flex-start; font-size: 1.1vw; color: var(--muted); letter-spacing: 0.04em; }
+  .top b { color: var(--ink); }
+  .brand { font-family: var(--display); font-size: 3.4vw; line-height: 1; color: var(--ink); margin: 0.3vw 0 0;
+    text-shadow: 0.15vw 0.15vw 0 var(--lav), 0 0 1.6vw rgba(184,189,246,0.35); }
+  .brand + div { margin-top: 0.6vw; font-size: 1.2vw; color: var(--lav-2); }
+  .eq { position: fixed; right: 4vw; top: 7.5vw; width: 27vw; height: 5vw; display: flex; align-items: flex-end; gap: 0.3vw; opacity: 0.45; z-index: -1; }
+  .eq i { flex: 1; background: var(--lav); height: 30%; animation: eq 1.2s ease-in-out infinite alternate; }
+  @keyframes eq { 0% { height: 15%; } 100% { height: 100%; } }
+
+  /* 본문 */
+  .main { align-self: center; min-width: 0; }
+  .status { display: inline-flex; align-items: center; gap: 0.7vw; font-family: var(--display); font-size: 1.5vw; letter-spacing: 0.14em;
+    padding: 0.5vw 1.4vw; border: 0.12vw solid var(--line); border-radius: 999px; color: var(--lav-2); }
+  .status .dot { width: 0.8vw; height: 0.8vw; border-radius: 50%; background: var(--muted); }
+  .status.live .dot { background: #ff5f7e; animation: blink 1s infinite; }
+  .status.open { background: var(--lime); border-color: var(--lime); color: #1d2160; }
+  .status.open .dot { background: #1d2160; animation: blink 0.8s infinite; }
+  @keyframes blink { 50% { opacity: 0.25; } }
+  .team { display: inline-block; font-size: 1.3vw; font-weight: 800; letter-spacing: 0.06em; padding: 0.25vw 0.9vw; border-radius: 0.2vw; color: #1d2160; }
+  .team-A { background: var(--lime); } .team-B { background: var(--lav); }
+  .title { font-size: 6.4vw; font-weight: 900; line-height: 1.08; letter-spacing: -0.03em; margin: 1.6vw 0 0.6vw; word-break: keep-all;
+    text-shadow: -0.35vw 0 rgba(60,199,180,0.75), 0.35vw 0 rgba(200,242,90,0.5); }
+  .artist { font-size: 2.2vw; color: var(--lav-2); }
+  .call { margin-top: 2.4vw; font-size: 2vw; font-weight: 800; }
+  .call.open { display: inline-block; background: var(--lime); color: #1d2160; padding: 0.7vw 1.6vw; box-shadow: -0.3vw 0 0 var(--teal), 0.3vw 0 0 var(--lav); animation: nudge 1.4s ease-in-out infinite; }
+  @keyframes nudge { 50% { transform: translateX(0.4vw); } }
+
+  .idle-brand { font-family: var(--display); font-size: 8.6vw; line-height: 0.95; margin: 0;
+    text-shadow: 0.3vw 0.3vw 0 var(--lav), 0 0 2.6vw rgba(184,189,246,0.4); }
+  .idle-brand span { display: block; }
+  .idle-sub { font-family: var(--display); font-size: 1.9vw; color: var(--lav-2); margin-top: 1.6vw; }
+  .idle-when { font-size: 1.9vw; font-weight: 700; margin-top: 0.8vw; }
+
+  /* 결과 */
+  .totals { display: flex; gap: 2vw; margin-top: 2vw; }
+  .totals > div { flex: 1; background: var(--glass); border: 0.1vw solid var(--line); padding: 1.4vw 1.8vw; }
+  .totals > div.win { border-color: var(--lime); box-shadow: 0 0 2vw rgba(200,242,90,0.25); }
+  .totals b { display: block; font-size: 5.6vw; font-weight: 900; line-height: 1.1; margin-top: 0.4vw; }
+  .rank { list-style: none; padding: 0; margin: 1.8vw 0 0; }
+  .rank li { display: grid; grid-template-columns: 3vw 1fr auto; align-items: center; gap: 1vw; padding: 0.55vw 0; border-bottom: 0.08vw solid var(--line); font-size: 1.5vw; }
+  .rank li > span:first-child { font-weight: 900; color: var(--lime); }
+  .rank .team { font-size: 0.9vw; margin-right: 0.6vw; vertical-align: 0.2vw; }
+
+  /* QR */
+  .qr { align-self: center; background: var(--glass); border: 0.1vw solid var(--line); padding: 1.6vw; text-align: center; position: relative;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+  .qr::before, .qr::after { content: ''; position: absolute; width: 1.4vw; height: 1.4vw; border: 0.2vw solid var(--lime); }
+  .qr::before { top: -0.2vw; left: -0.2vw; border-right: 0; border-bottom: 0; }
+  .qr::after { bottom: -0.2vw; right: -0.2vw; border-left: 0; border-top: 0; }
+  .qr .code { background: #fff; padding: 1vw; }
+  .qr .code svg { display: block; width: 100%; height: auto; }
+  .qr .t1 { font-family: var(--display); font-size: 1.6vw; margin-top: 1.2vw; letter-spacing: 0.06em; }
+  .qr .t2 { font-size: 1.15vw; color: var(--lav-2); margin-top: 0.4vw; }
+  .qr .u { font-family: var(--mono); font-size: 0.95vw; color: var(--muted); margin-top: 0.8vw; word-break: break-all; }
+
+  /* 하단 라임 띠 */
+  .band { grid-column: 1 / -1; margin: 0 -4vw; height: 3.4vw; overflow: hidden; position: relative;
+    background: linear-gradient(90deg, rgba(60,199,180,0.1), var(--lime) 15%, #b5ef4a 65%, rgba(60,199,180,0.9));
+    box-shadow: 0 -0.5vw 0 -0.2vw rgba(184,189,246,0.35); }
+  .band .track { position: absolute; top: 50%; white-space: nowrap; font-family: var(--display); font-size: 1.5vw; letter-spacing: 0.1em; color: #1d2160;
+    animation: marquee 30s linear infinite; }
+  @keyframes marquee { from { transform: translate(0, -50%); } to { transform: translate(-50%, -50%); } }
 </style>
 </head>
 <body>
+<div class="bg"></div>
+<div class="glyphs" id="glyphs" aria-hidden="true"></div>
+<div class="eq" id="eq" aria-hidden="true"></div>
+<div class="scan" aria-hidden="true"></div>
+
 <div class="stage">
-  <div>
-    <div class="ev" id="ev"></div>
-    <div id="main"></div>
+  <div class="top">
+    <div id="topLeft"></div>
+    <div>흑인음악동아리 <b>FEEL SO GOOD</b> · 한양대학교 ERICA</div>
   </div>
+
+  <div class="main" id="main"></div>
+
   <div class="qr">
-    <img id="qr" alt="" onerror="this.style.display='none'" />
+    <div class="code" id="qr"></div>
+    <div class="t1">SCAN &amp; VOTE</div>
+    <div class="t2">휴대폰 카메라로 스캔해서 투표하세요</div>
     <div class="u" id="url"></div>
-    <div style="font-size:1.4vw;margin-top:.6vw">휴대폰으로 스캔해서 투표하세요</div>
   </div>
+
+  <div class="band"><div class="track" id="track"></div></div>
 </div>
+
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// QR: 외부 서비스 없이 브라우저에서 직접 그림
 const voteUrl = location.origin + '/';
-$('url').textContent = voteUrl.replace(/^https?:\/\//, '');
-$('qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=0&data=' + encodeURIComponent(voteUrl);
+$('url').textContent = voteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+try {
+  const q = qrcode(0, 'M'); q.addData(voteUrl); q.make();
+  $('qr').innerHTML = q.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
+} catch (e) { $('qr').textContent = voteUrl; }
+
+// 장식
+(function () {
+  const eq = $('eq');
+  for (let i = 0; i < 26; i++) {
+    const b = document.createElement('i');
+    b.style.animationDelay = (-Math.random() * 1.2).toFixed(2) + 's';
+    b.style.animationDuration = (0.8 + Math.random() * 0.9).toFixed(2) + 's';
+    eq.appendChild(b);
+  }
+  $('track').textContent = 'ONE LAST TIME, THIS SEMESTER! ✦ FEEL SO GOOD ✦ 2026-2 FSG 정기공연 ✦ '.repeat(6);
+  const set = 'ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ<>∧∨⊐⊏ΞЭШZXNM_';
+  let out = '';
+  for (let r = 0; r < 60; r++) {
+    const len = 6 + Math.floor(Math.random() * 22);
+    let line = '';
+    for (let c = 0; c < len; c++) line += set[Math.floor(Math.random() * set.length)];
+    out += line + '\n';
+  }
+  $('glyphs').textContent = out;
+})();
+
+const pad = (n) => String(n).padStart(2, '0');
+let lastKey = '';
 
 async function load() {
   let S;
   try { S = await (await fetch('/api/state', { cache: 'no-store' })).json(); } catch { return; }
-  $('ev').textContent = S.eventTitle;
+  const key = JSON.stringify([S.current, S.phase, S.showResults, S.results, S.teams, S.eventTitle]);
+  if (key === lastKey) return;
+  lastKey = key;
+  render(S);
+}
+
+function render(S) {
   const c = S.current;
   const res = S.showResults && S.results;
+  const active = c && S.phase !== 'idle';
+  $('topLeft').innerHTML = (active || res)
+    ? `<div class="brand">Feel So Good</div><div>${esc(S.eventTitle)}</div>`
+    : '';
+  document.querySelector('.eq').style.display = (active || res) ? '' : 'none';
+
   let html = '';
   if (res) {
-    const top = [...res.songs].sort((a, b) => b.votes - a.votes).slice(0, 5);
-    html = `<div class="phase">결과 발표</div>
-      <div class="totals">${['A', 'B'].map((t) => `<div><span class="team-tag team-${t} tag">${esc(S.teams[t])}</span><b>♥ ${res.teamTotals[t]}</b></div>`).join('')}</div>
-      <ol class="ranking">${top.map((s) => `<li><span class="team-tag team-${s.team}">${esc(S.teams[s.team])}</span> ${esc(s.title)} — ♥ ${s.votes}</li>`).join('')}</ol>`;
-  } else if (!c || S.phase === 'idle') {
-    html = `<div class="phase">곧 무대가 시작됩니다</div><div class="title" style="font-size:4vw">QR을 미리 스캔해 두세요</div>`;
+    const t = res.teamTotals;
+    const win = t.A === t.B ? null : t.A > t.B ? 'A' : 'B';
+    const top = [...res.songs].sort((a, b) => b.votes - a.votes || a.order - b.order).slice(0, 5);
+    html = `<span class="status open"><span class="dot"></span>RESULT</span>
+      <div class="totals">${['A', 'B'].map((k) => `<div class="${win === k ? 'win' : ''}"><span class="team team-${k}">${esc(S.teams[k])}</span><b>♥ ${t[k]}</b></div>`).join('')}</div>
+      <ol class="rank">${top.map((s, i) => `<li><span>${pad(i + 1)}</span><span><span class="team team-${s.team}">${esc(S.teams[s.team])}</span>${esc(s.title)}</span><span>♥ ${s.votes}</span></li>`).join('')}</ol>`;
+  } else if (!active) {
+    html = `<h1 class="idle-brand"><span>Feel</span><span>So</span><span>Good</span></h1>
+      <div class="idle-sub">: The generation . . .</div>
+      <div class="idle-when">${esc(S.eventTitle)} · 11/26 THU 학생회관 소극장 19:00</div>
+      <div class="call">무대가 끝날 때마다 투표가 열려요. QR을 미리 스캔해 두세요!</div>`;
   } else {
-    const label = { performing: 'NOW PLAYING', voting: '♥ 지금 투표하세요!', closed: '투표 마감' }[S.phase];
-    html = `<div class="phase ${S.phase}">${label}</div>
-      <div style="margin-top:2vh"><span class="team-tag team-${c.team} tag">${esc(S.teams[c.team])}</span></div>
+    const st = S.phase === 'performing' ? ['live', 'NOW ON STAGE'] : S.phase === 'voting' ? ['open', 'VOTE OPEN'] : ['', 'VOTE CLOSED'];
+    const call = S.phase === 'voting'
+      ? '<div class="call open">♥ 지금 투표하세요! 마음에 들었다면 FEEL SO GOOD</div>'
+      : S.phase === 'performing' ? '<div class="call">무대가 끝나면 투표가 열려요</div>'
+      : '<div class="call">투표가 마감됐어요 · 다음 무대를 기다려 주세요</div>';
+    html = `<span class="status ${st[0]}"><span class="dot"></span>${st[1]}</span>
+      <div style="margin-top:1.8vw"><span class="team team-${c.team}">${esc(S.teams[c.team])}</span></div>
       <div class="title">${esc(c.title)}</div>
-      <div class="artist">${esc(c.artist)}</div>`;
+      <div class="artist">${esc(c.artist)}</div>${call}`;
   }
   $('main').innerHTML = html;
 }
+
 load();
 setInterval(load, 2000);
 </script>

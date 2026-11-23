@@ -3,55 +3,213 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0e1116" />
-<title>무대 투표</title>
-<link rel="stylesheet" href="/style.css" />
+<meta name="theme-color" content="#262a78" />
+<title>Feel So Good · 무대 투표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 <style>
-  .now { text-align: center; padding: 28px 18px 24px; }
-  .now .label { font-size: 13px; color: var(--muted); letter-spacing: 0.04em; }
-  .now .title { font-size: 26px; font-weight: 800; margin: 10px 0 2px; letter-spacing: -0.02em; word-break: keep-all; }
-  .now .artist { color: var(--muted); }
-  .heart {
-    width: 168px; height: 168px; border-radius: 50%; margin: 26px auto 14px; display: grid; place-items: center;
-    background: radial-gradient(circle at 30% 30%, #ff7a92, var(--accent)); color: #fff;
-    font-size: 17px; font-weight: 800; box-shadow: 0 10px 40px rgba(255, 77, 109, 0.35);
-    transition: transform 0.12s;
+  @font-face { font-family: 'Audiowide'; src: url('/fonts/audiowide.woff2') format('woff2'); font-display: swap; }
+  @font-face { font-family: 'Share Tech Mono'; src: url('/fonts/sharetechmono.woff2') format('woff2'); font-display: swap; }
+  :root {
+    --indigo: #262a78;
+    --indigo-2: #3a3f9e;
+    --lav: #b8bdf6;
+    --lav-2: #dfe2ff;
+    --lime: #c8f25a;
+    --teal: #3cc7b4;
+    --ink: #f3f4ff;
+    --muted: #a9addf;
+    --glass: rgba(34, 37, 110, 0.62);
+    --line: rgba(184, 189, 246, 0.28);
+    --display: 'Audiowide', 'Pretendard', sans-serif;
+    --mono: 'Share Tech Mono', ui-monospace, monospace;
   }
-  .heart span { display: block; font-size: 54px; line-height: 1; margin-bottom: 6px; }
-  .heart:active:not(:disabled) { transform: scale(0.94); }
-  .heart.waiting { background: #232a35; box-shadow: none; color: var(--muted); }
-  .heart.done { background: radial-gradient(circle at 30% 30%, #69db7c, #2f9e44); box-shadow: 0 10px 40px rgba(81, 207, 102, 0.3); opacity: 1; }
-  .pulse { animation: pulse 1.6s infinite; }
-  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,77,109,0.5); } 50% { box-shadow: 0 0 0 18px rgba(255,77,109,0); } }
-  .setlist { list-style: none; padding: 0; margin: 0; }
-  .setlist li { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-bottom: 1px solid var(--line); }
-  .setlist li:last-child { border-bottom: 0; }
-  .setlist .no { width: 22px; color: var(--muted); font-size: 13px; text-align: right; }
-  .setlist .t { flex: 1; min-width: 0; }
-  .setlist .t b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .setlist .t small { color: var(--muted); }
-  .setlist li.cur { background: rgba(255, 77, 109, 0.08); border-radius: 10px; }
-  .mark { font-size: 13px; color: var(--accent); white-space: nowrap; }
-  .teams { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .teams .card { text-align: center; padding: 14px; }
-  .teams .n { font-size: 28px; font-weight: 800; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    color: var(--ink);
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: var(--indigo);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ---------- 배경: 포스터 질감 + 남보라 그라데이션 + 스캔라인 ---------- */
+  .bg {
+    position: fixed; inset: 0; z-index: -3;
+    background:
+      linear-gradient(180deg, rgba(38, 42, 120, 0.55) 0%, rgba(38, 42, 120, 0.78) 45%, rgba(22, 24, 74, 0.95) 100%),
+      url('/bg.jpg') center / cover no-repeat;
+  }
+  .scan {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 3px);
+    mix-blend-mode: overlay;
+  }
+  /* 포스터 왼쪽의 암호 같은 글자 기둥 */
+  .glyphs {
+    position: fixed; top: 0; bottom: 0; left: 0; width: 46%; z-index: -2; overflow: hidden;
+    font-family: var(--mono); font-size: 11px; line-height: 1.55; letter-spacing: 0.35em;
+    color: var(--lav-2); opacity: 0.22; white-space: pre; padding: 6px 0 0 8px;
+    -webkit-mask-image: linear-gradient(90deg, #000 40%, transparent);
+            mask-image: linear-gradient(90deg, #000 40%, transparent);
+  }
+
+  .wrap { max-width: 480px; margin: 0 auto; padding: max(18px, env(safe-area-inset-top)) 18px 40px; position: relative; }
+
+  /* ---------- 헤더 ---------- */
+  .topbar { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+  .topbar b { color: var(--ink); font-weight: 700; }
+  .hero { position: relative; margin-top: 18px; padding: 8px 0 4px; }
+  .eq { position: absolute; right: 0; top: 0; height: 120px; width: 62%; display: flex; align-items: flex-end; gap: 4px; opacity: 0.5; }
+  .eq i { flex: 1; background: var(--lav); border-radius: 1px; height: 30%; animation: eq 1.2s ease-in-out infinite alternate; }
+  @keyframes eq { 0% { height: 18%; } 100% { height: 100%; } }
+  .brand {
+    position: relative; font-family: var(--display); font-size: 58px; line-height: 0.98; margin: 0;
+    color: var(--ink); letter-spacing: 0.01em;
+    text-shadow: 2px 2px 0 var(--lav), -1px -1px 0 rgba(255,255,255,0.4), 0 0 22px rgba(184,189,246,0.35);
+  }
+  .brand span { display: block; }
+  .tagline { font-family: var(--display); font-size: 17px; margin-top: 14px; color: var(--lav-2); letter-spacing: 0.02em; }
+  .event { font-size: 16px; font-weight: 700; margin-top: 4px; }
+  .when { margin-top: 10px; font-size: 14px; color: var(--lav-2); font-weight: 600; }
+  .when b { color: var(--ink); font-weight: 800; }
+  /* 무대가 진행 중일 땐 헤더를 줄여서 투표 버튼이 한 화면에 들어오게 */
+  body.active .hero { margin-top: 10px; }
+  body.active .brand { font-size: 30px; display: flex; gap: 10px; }
+  body.active .brand span { display: inline; }
+  body.active .eq { height: 46px; width: 40%; }
+  body.active .tagline, body.active .when { display: none; }
+  body.active .event { font-size: 14px; margin-top: 6px; color: var(--lav-2); }
+  body.active .band { margin-top: 14px; height: 28px; }
+  body.active .panel { margin-top: 14px; padding-top: 16px; }
+  body.active .vote { margin-top: 18px; }
+
+  /* ---------- 라임 글리치 띠 ---------- */
+  .band { position: relative; margin: 22px -18px 0; height: 34px; overflow: hidden;
+    background: linear-gradient(90deg, rgba(60,199,180,0.0), var(--lime) 18%, #b5ef4a 60%, rgba(60,199,180,0.85));
+    box-shadow: 0 6px 0 -2px rgba(60,199,180,0.55), 0 -5px 0 -2px rgba(184,189,246,0.35);
+  }
+  .band .track { position: absolute; white-space: nowrap; top: 50%; transform: translateY(-50%);
+    font-family: var(--display); font-size: 13px; color: #1d2160; letter-spacing: 0.08em;
+    animation: marquee 18s linear infinite; }
+  @keyframes marquee { from { transform: translate(0, -50%); } to { transform: translate(-50%, -50%); } }
+  .band2 { height: 4px; margin: 6px -18px 0; background: linear-gradient(90deg, var(--teal), transparent 70%); opacity: 0.8; }
+
+  /* ---------- 지금 무대 ---------- */
+  .panel {
+    margin-top: 22px; background: var(--glass); border: 1px solid var(--line);
+    border-radius: 4px; padding: 22px 18px 24px; text-align: center; position: relative;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
+  .panel::before, .panel::after { content: ''; position: absolute; width: 14px; height: 14px; border: 2px solid var(--lime); }
+  .panel::before { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
+  .panel::after { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
+  .status {
+    display: inline-flex; align-items: center; gap: 7px; font-family: var(--display); font-size: 12px; letter-spacing: 0.12em;
+    padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--lav-2);
+  }
+  .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .status.live .dot { background: #ff5f7e; animation: blink 1s infinite; }
+  .status.open { color: #1d2160; background: var(--lime); border-color: var(--lime); }
+  .status.open .dot { background: #1d2160; animation: blink 0.8s infinite; }
+  @keyframes blink { 50% { opacity: 0.25; } }
+
+  .song-title {
+    font-size: 30px; font-weight: 900; margin: 16px 0 4px; letter-spacing: -0.02em; word-break: keep-all; line-height: 1.2;
+    text-shadow: -2px 0 rgba(60,199,180,0.75), 2px 0 rgba(200,242,90,0.55);
+  }
+  .song-artist { color: var(--lav-2); font-size: 15px; }
+  .team { display: inline-block; margin-top: 12px; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 2px; }
+  .team-A { background: var(--lime); color: #1d2160; }
+  .team-B { background: var(--lav); color: #1d2160; }
+
+  button { font: inherit; border: 0; cursor: pointer; }
+  .vote {
+    position: relative; display: block; width: 186px; height: 186px; margin: 26px auto 14px; border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, #e6ff9e, var(--lime) 45%, #8fd13a);
+    color: #1d2160; font-family: var(--display); font-size: 18px; letter-spacing: 0.06em;
+    box-shadow: -5px 0 0 rgba(60,199,180,0.65), 5px 0 0 rgba(184,189,246,0.55), 0 14px 40px rgba(200,242,90,0.35);
+    transition: transform 0.1s;
+  }
+  .vote .h { display: block; font-size: 58px; line-height: 1; margin-bottom: 6px; font-family: 'Pretendard', sans-serif; }
+  .vote small { display: block; font-family: 'Pretendard', sans-serif; font-weight: 800; font-size: 13px; letter-spacing: 0; margin-top: 2px; }
+  .vote:active:not(:disabled) { transform: scale(0.94); }
+  .vote.pulse::after { content: ''; position: absolute; inset: -10px; border-radius: 50%; border: 2px solid var(--lime); animation: ring 1.4s infinite; }
+  @keyframes ring { from { transform: scale(0.95); opacity: 0.9; } to { transform: scale(1.18); opacity: 0; } }
+  .vote:disabled { cursor: default; }
+  .vote.wait { background: transparent; color: var(--muted); border: 2px dashed var(--line); box-shadow: none; }
+  .vote.done { background: radial-gradient(circle at 32% 28%, #ffffff, var(--lav) 55%, #8d93e6); box-shadow: 0 14px 40px rgba(184,189,246,0.35); }
+  .hint { font-size: 13px; color: var(--lav-2); }
+
+  /* ---------- 결과 ---------- */
+  .sec { font-family: var(--display); font-size: 15px; letter-spacing: 0.14em; margin: 30px 0 10px; display: flex; align-items: center; gap: 10px; color: var(--lav-2); }
+  .sec::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  .totals { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .totals div { background: var(--glass); border: 1px solid var(--line); border-radius: 4px; padding: 14px; text-align: center; }
+  .totals b { display: block; font-size: 36px; font-weight: 900; margin-top: 6px; }
+
+  /* ---------- 셋리스트 ---------- */
+  .setlist { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .setlist li { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 12px 6px; border-bottom: 1px solid var(--line); }
+  .setlist .no { font-size: 15px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .setlist .t { min-width: 0; }
+  .setlist .t b { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .setlist .t small { color: var(--muted); font-size: 12px; }
+  .setlist .t .team { margin: 0 6px 0 0; padding: 1px 6px; font-size: 10px; vertical-align: 2px; }
+  .setlist li.cur { background: linear-gradient(90deg, rgba(200,242,90,0.16), transparent); }
+  .setlist li.cur .no { color: var(--lime); }
+  .mark { font-size: 12px; font-weight: 800; color: var(--lime); white-space: nowrap; }
+
+  .foot { text-align: center; margin-top: 26px; font-size: 12px; color: var(--muted); line-height: 1.7; }
+  .foot b { font-family: var(--display); font-weight: 400; color: var(--lav-2); letter-spacing: 0.08em; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 10;
+    background: var(--lime); color: #1d2160; font-weight: 800; padding: 10px 18px; border-radius: 2px;
+    box-shadow: -3px 0 0 var(--teal), 3px 0 0 var(--lav);
+    opacity: 0; transition: opacity 0.2s; pointer-events: none; font-size: 14px;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .eq i, .band .track, .vote.pulse::after, .status .dot { animation: none !important; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1 id="eventTitle">무대 투표</h1>
-  <div id="eventInfo" class="muted small"></div>
+<div class="bg"></div>
+<div class="glyphs" id="glyphs" aria-hidden="true"></div>
+<div class="scan" aria-hidden="true"></div>
 
-  <div id="now" class="card now" style="margin-top:18px"></div>
+<div class="wrap">
+  <div class="topbar"><span>흑인음악동아리 <b>FEEL SO GOOD</b></span><span>한양대학교 ERICA</span></div>
+
+  <header class="hero">
+    <div class="eq" id="eq" aria-hidden="true"></div>
+    <h1 class="brand"><span>Feel</span><span>So</span><span>Good</span></h1>
+    <div class="tagline">: The generation . . .</div>
+    <div class="event" id="eventTitle"></div>
+    <div class="when"><b>11/26 THU</b> · 학생회관 소극장 <b>19:00</b></div>
+  </header>
+
+  <div class="band"><div class="track" id="track"></div></div>
+  <div class="band2"></div>
+
+  <section class="panel" id="now"></section>
 
   <div id="resultsBox" hidden>
-    <h2>결과</h2>
-    <div class="teams" id="teamTotals"></div>
+    <div class="sec">RESULT</div>
+    <div class="totals" id="teamTotals"></div>
   </div>
 
-  <h2>셋리스트</h2>
-  <div class="card" style="padding:6px 12px"><ul class="setlist" id="setlist"></ul></div>
-  <p class="muted small" style="text-align:center;margin-top:22px">한 기기당 무대마다 한 번씩 투표할 수 있어요.</p>
+  <div class="sec">SETLIST</div>
+  <ul class="setlist" id="setlist"></ul>
+
+  <div class="foot">
+    <div id="eventInfo"></div>
+    한 기기당 무대마다 한 번씩 투표할 수 있어요<br />
+    <b>ONE LAST TIME, THIS SEMESTER!</b>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -60,6 +218,31 @@ let S = null;
 let sending = false;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ---------- 장식 요소 (포스터 모티프) ----------
+(function decorate() {
+  // 이퀄라이저 막대
+  const eq = $('eq');
+  for (let i = 0; i < 22; i++) {
+    const b = document.createElement('i');
+    b.style.animationDelay = (-Math.random() * 1.2).toFixed(2) + 's';
+    b.style.animationDuration = (0.8 + Math.random() * 0.9).toFixed(2) + 's';
+    eq.appendChild(b);
+  }
+  // 흐르는 문구
+  const unit = 'ONE LAST TIME, THIS SEMESTER! ✦ FEEL SO GOOD ✦ 2026-2 FSG 정기공연 ✦ ';
+  $('track').textContent = unit.repeat(6);
+  // 암호 글자 기둥
+  const set = 'ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ<>∧∨⊐⊏ΞЭШZXNM_';
+  let out = '';
+  for (let r = 0; r < 70; r++) {
+    const len = 6 + Math.floor(Math.random() * 22);
+    let line = '';
+    for (let c = 0; c < len; c++) line += set[Math.floor(Math.random() * set.length)];
+    out += line + '\n';
+  }
+  $('glyphs').textContent = out;
+})();
 
 // 서버 쿠키가 지워져도 같은 브라우저에서 투표 여부가 화면에 반영되도록 로컬에도 기록.
 // 운영진이 '전체 투표 초기화'를 하면 epoch 값이 바뀌고, 그때 로컬 기록도 비웁니다.
@@ -78,46 +261,54 @@ function toast(msg) {
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
+let lastKey = '';
 async function load() {
   try {
     const r = await fetch('/api/state', { credentials: 'same-origin', cache: 'no-store' });
     S = await r.json();
     syncEpoch(S.epoch);
-    render();
+    // 바뀐 게 있을 때만 다시 그려서 버튼 누르는 순간 화면이 교체되지 않게 함
+    const key = JSON.stringify([S, localVoted()]);
+    if (key !== lastKey) { lastKey = key; render(); }
   } catch {}
 }
 
 function voted(id) { return S.myVotes.includes(id) || localVoted().includes(id); }
+const pad = (n) => String(n).padStart(2, '0');
 
 function render() {
   $('eventTitle').textContent = S.eventTitle;
   $('eventInfo').textContent = S.eventInfo;
-  document.title = S.eventTitle + ' · 투표';
+  document.title = 'Feel So Good · ' + S.eventTitle;
 
   const c = S.current;
   const now = $('now');
+  document.body.classList.toggle('active', !!c && S.phase !== 'idle');
   if (!c || S.phase === 'idle') {
-    now.innerHTML = `<div class="label">잠시만 기다려 주세요</div>
-      <div class="title" style="font-size:20px">곧 무대가 시작돼요</div>
-      <div class="artist small">공연이 끝나면 이 화면에서 투표가 열립니다</div>`;
+    now.innerHTML = `<span class="status"><span class="dot"></span>STANDBY</span>
+      <div class="song-title" style="font-size:24px">곧 무대가 시작돼요</div>
+      <div class="song-artist">무대가 끝날 때마다 이 화면에서 투표가 열려요</div>
+      <button class="vote wait" disabled><span class="h">♡</span>MIC CHECK</button>
+      <div class="hint">화면을 켜 둔 채로 기다려 주세요</div>`;
   } else {
-    const head = `<div class="label">${S.phase === 'performing' ? '지금 공연 중' : S.phase === 'voting' ? '방금 끝난 무대' : '투표 마감된 무대'}</div>
-      <div style="margin-top:10px"><span class="team-tag team-${c.team}">${esc(S.teams[c.team])}</span></div>
-      <div class="title">${esc(c.title)}</div>
-      <div class="artist">${esc(c.artist)}</div>`;
+    const st = S.phase === 'performing' ? ['live', 'LIVE NOW'] : S.phase === 'voting' ? ['open', 'VOTE OPEN'] : ['', 'VOTE CLOSED'];
+    const head = `<span class="status ${st[0]}"><span class="dot"></span>${st[1]}</span>
+      <div><span class="team team-${c.team}">${esc(S.teams[c.team])}</span></div>
+      <div class="song-title">${esc(c.title)}</div>
+      <div class="song-artist">${esc(c.artist)}</div>`;
     let btn = '';
     if (voted(c.id)) {
-      btn = `<button class="heart done" disabled><div><span>✓</span>투표 완료</div></button>
-        <div class="muted small">이 무대에 마음을 남겼어요</div>`;
+      btn = `<button class="vote done" disabled><span class="h">✓</span>VOTED<small>마음을 남겼어요</small></button>
+        <div class="hint">다음 무대도 기대해 주세요</div>`;
     } else if (S.phase === 'performing') {
-      btn = `<button class="heart waiting" disabled><div><span>♡</span>공연 후 열려요</div></button>
-        <div class="muted small">무대가 끝나면 버튼이 활성화돼요</div>`;
+      btn = `<button class="vote wait" disabled><span class="h">♡</span>ON STAGE<small>공연 후 열려요</small></button>
+        <div class="hint">무대가 끝나면 버튼이 켜져요</div>`;
     } else if (S.phase === 'voting') {
-      btn = `<button class="heart pulse" id="voteBtn"><div><span>♥</span>좋았어요!</div></button>
-        <div class="small">이 무대가 마음에 들었다면 눌러주세요</div>`;
+      btn = `<button class="vote pulse" id="voteBtn"><span class="h">♥</span>FEEL SO GOOD<small>이 무대 좋았어요!</small></button>
+        <div class="hint">마음에 들었다면 눌러주세요</div>`;
     } else {
-      btn = `<button class="heart waiting" disabled><div><span>♡</span>투표 마감</div></button>
-        <div class="muted small">다음 무대를 기다려 주세요</div>`;
+      btn = `<button class="vote wait" disabled><span class="h">♡</span>CLOSED<small>투표 마감</small></button>
+        <div class="hint">다음 무대를 기다려 주세요</div>`;
     }
     now.innerHTML = head + btn;
     const vb = $('voteBtn');
@@ -129,16 +320,15 @@ function render() {
   const res = S.showResults && S.results;
   rb.hidden = !res;
   if (res) {
-    $('teamTotals').innerHTML = ['A', 'B'].map((t) => `<div class="card"><span class="team-tag team-${t}">${esc(S.teams[t])}</span><div class="n">${res.teamTotals[t]}</div><div class="muted small">총 득표</div></div>`).join('');
+    $('teamTotals').innerHTML = ['A', 'B'].map((t) => `<div><span class="team team-${t}" style="margin:0">${esc(S.teams[t])}</span><b>${res.teamTotals[t]}</b><span class="hint">TOTAL ♥</span></div>`).join('');
   }
   const counts = res ? Object.fromEntries(res.songs.map((s) => [s.id, s.votes])) : null;
 
   $('setlist').innerHTML = S.songs.map((s) => `
     <li class="${c && s.id === c.id && S.phase !== 'idle' ? 'cur' : ''}">
-      <span class="no">${s.order}</span>
-      <span class="team-tag team-${s.team}">${esc(S.teams[s.team])}</span>
-      <span class="t"><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span>
-      ${counts ? `<span class="mark">♥ ${counts[s.id]}</span>` : voted(s.id) ? '<span class="mark">♥ 투표함</span>' : ''}
+      <span class="no">${pad(s.order)}</span>
+      <span class="t"><b>${esc(s.title)}</b><small><span class="team team-${s.team}">${esc(S.teams[s.team])}</span>${esc(s.artist)}</small></span>
+      ${counts ? `<span class="mark">♥ ${counts[s.id]}</span>` : voted(s.id) ? '<span class="mark">♥ VOTED</span>' : ''}
     </li>`).join('');
 }
 
@@ -151,7 +341,7 @@ async function vote(songId) {
     if (r.ok) {
       markLocal(songId);
       if (navigator.vibrate) navigator.vibrate(40);
-      toast('투표 완료! 고마워요 ♥');
+      toast('투표 완료! FEEL SO GOOD ♥');
     } else {
       if (d.error && d.error.includes('이미')) markLocal(songId);
       toast(d.error || '투표에 실패했어요');

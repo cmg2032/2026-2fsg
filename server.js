@@ -141,7 +141,7 @@ function readBody(req) {
   });
 }
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.jpg': 'image/jpeg', '.woff2': 'font/woff2' };
 
 function serveStatic(req, res, pathname) {
   const routes = { '/': 'index.html', '/admin': 'admin.html', '/screen': 'screen.html' };
