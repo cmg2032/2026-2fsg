@@ -144,9 +144,22 @@
   /* ---------- 결과 ---------- */
   .sec { font-family: var(--display); font-size: 15px; letter-spacing: 0.14em; margin: 30px 0 10px; display: flex; align-items: center; gap: 10px; color: var(--lav-2); }
   .sec::after { content: ''; flex: 1; height: 1px; background: var(--line); }
-  .totals { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .totals div { background: var(--glass); border: 1px solid var(--line); border-radius: 4px; padding: 14px; text-align: center; }
-  .totals b { display: block; font-size: 36px; font-weight: 900; margin-top: 6px; }
+  /* 곡별 득표 순위 */
+  .ranking { list-style: none; margin: 0; padding: 4px 12px; background: var(--glass); border: 1px solid var(--line); border-radius: 4px;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+  .ranking li { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+  .ranking li:last-child { border-bottom: 0; }
+  .ranking .pos { font-size: 17px; font-weight: 900; color: var(--muted); text-align: center; }
+  .ranking li.top .pos { color: var(--lime); font-size: 20px; }
+  .ranking li.top1 { background: linear-gradient(90deg, rgba(200,242,90,0.16), transparent); margin: 0 -12px; padding-left: 14px; padding-right: 14px; }
+  .ranking .t { min-width: 0; }
+  .ranking .t b { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ranking .t small { color: var(--muted); font-size: 12px; }
+  .ranking .t .team { margin: 0 6px 0 0; padding: 1px 6px; font-size: 10px; vertical-align: 2px; }
+  .ranking .v { font-weight: 900; font-size: 16px; white-space: nowrap; }
+  .ranking .bar { grid-column: 2 / -1; height: 4px; background: rgba(16,18,60,0.6); margin-top: -4px; }
+  .ranking .bar i { display: block; height: 100%; }
+  .ranking li.zero .t b, .ranking li.zero .v { color: var(--muted); }
 
   /* ---------- 셋리스트 ---------- */
   .setlist { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
@@ -198,8 +211,8 @@
   <section class="panel" id="now"></section>
 
   <div id="resultsBox" hidden>
-    <div class="sec">RESULT</div>
-    <div class="totals" id="teamTotals"></div>
+    <div class="sec">RANKING</div>
+    <ol class="ranking" id="ranking"></ol>
   </div>
 
   <div class="sec">SETLIST</div>
@@ -320,15 +333,27 @@ function render() {
   const res = S.showResults && S.results;
   rb.hidden = !res;
   if (res) {
-    $('teamTotals').innerHTML = ['A', 'B'].map((t) => `<div><span class="team team-${t}" style="margin:0">${esc(S.teams[t])}</span><b>${res.teamTotals[t]}</b><span class="hint">TOTAL ♥</span></div>`).join('');
+    // 득표순 정렬, 동점은 같은 순위 (같은 표수 안에서는 공연 순서대로)
+    const sorted = [...res.songs].sort((a, b) => b.votes - a.votes || a.order - b.order);
+    const max = Math.max(1, sorted[0] ? sorted[0].votes : 1);
+    let pos = 0;
+    $('ranking').innerHTML = sorted.map((s, i) => {
+      if (i === 0 || s.votes !== sorted[i - 1].votes) pos = i + 1;
+      const cls = [s.votes > 0 && pos <= 3 ? 'top' : '', s.votes > 0 && pos === 1 ? 'top1' : '', s.votes === 0 ? 'zero' : ''].join(' ');
+      return `<li class="${cls}">
+        <span class="pos">${pos}</span>
+        <span class="t"><b>${esc(s.title)}</b><small><span class="team team-${s.team}">${esc(S.teams[s.team])}</span>${esc(s.artist)}</small></span>
+        <span class="v">♥ ${s.votes}</span>
+        <div class="bar"><i style="width:${(s.votes / max) * 100}%;background:var(--${s.team === 'A' ? 'lime' : 'lav'})"></i></div>
+      </li>`;
+    }).join('');
   }
-  const counts = res ? Object.fromEntries(res.songs.map((s) => [s.id, s.votes])) : null;
 
   $('setlist').innerHTML = S.songs.map((s) => `
     <li class="${c && s.id === c.id && S.phase !== 'idle' ? 'cur' : ''}">
       <span class="no">${pad(s.order)}</span>
       <span class="t"><b>${esc(s.title)}</b><small><span class="team team-${s.team}">${esc(S.teams[s.team])}</span>${esc(s.artist)}</small></span>
-      ${counts ? `<span class="mark">♥ ${counts[s.id]}</span>` : voted(s.id) ? '<span class="mark">♥ VOTED</span>' : ''}
+      ${voted(s.id) ? '<span class="mark">♥ VOTED</span>' : ''}
     </li>`).join('');
 }
 
