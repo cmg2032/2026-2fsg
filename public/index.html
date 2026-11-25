@@ -132,6 +132,10 @@
     transition: transform 0.1s;
   }
   .vote .h { display: block; font-size: 58px; line-height: 1; margin-bottom: 6px; font-family: 'Pretendard', sans-serif; }
+  /* FSG 로고 아이콘: 버튼 글자색을 그대로 따라감 */
+  .vote .logo { display: block; width: 70px; height: 70px; margin: 0 auto 4px; background: currentColor;
+    -webkit-mask: url('/fsg-logo.png') center / contain no-repeat; mask: url('/fsg-logo.png') center / contain no-repeat; }
+  .vote.wait .logo { opacity: 0.55; }
   .vote small { display: block; font-family: 'Pretendard', sans-serif; font-weight: 800; font-size: 13px; letter-spacing: 0; margin-top: 2px; }
   .vote:active:not(:disabled) { transform: scale(0.94); }
   .vote.pulse::after { content: ''; position: absolute; inset: -10px; border-radius: 50%; border: 2px solid var(--lime); animation: ring 1.4s infinite; }
@@ -143,13 +147,13 @@
     box-shadow: -6px 0 0 rgba(60,199,180,0.85), 6px 0 0 rgba(184,189,246,0.75), 0 0 0 6px rgba(200,242,90,0.25), 0 16px 56px rgba(200,242,90,0.6);
     transform: scale(1.04); animation: throb 1s ease-in-out infinite;
   }
-  .vote.again .h { font-size: 64px; text-shadow: 0 0 18px rgba(255,255,255,0.8); }
+  .vote.again .logo { width: 80px; height: 80px; filter: drop-shadow(0 0 6px rgba(255,255,255,0.9)); }
   .vote.again::before { content: ''; position: absolute; inset: -20px; border-radius: 50%; border: 2px solid rgba(200,242,90,0.6); animation: ring 1.4s 0.5s infinite; }
   .vote.again:active { transform: scale(0.96); animation: none; }
   @keyframes throb { 50% { transform: scale(1.08); } }
-  .pips { display: flex; justify-content: center; gap: 8px; margin: 2px 0 8px; }
-  .pips i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--lime); }
-  .pips i.on { background: var(--lime); box-shadow: 0 0 8px var(--lime); }
+  .pips { display: flex; justify-content: center; gap: 14px; margin: 6px 0 12px; }
+  .pips i { width: 20px; height: 20px; border-radius: 50%; border: 3px solid var(--lime); opacity: 0.7; transition: all 0.3s; }
+  .pips i.on { background: var(--lime); opacity: 1; box-shadow: 0 0 10px var(--lime), 0 0 22px rgba(200,242,90,0.6); }
   .vote.wait { background: transparent; color: var(--muted); border: 2px dashed var(--line); box-shadow: none; }
   .vote.done { background: radial-gradient(circle at 32% 28%, #ffffff, var(--lav) 55%, #8d93e6); box-shadow: 0 14px 40px rgba(184,189,246,0.35); }
   .hint { font-size: 13px; color: var(--lav-2); }
@@ -317,7 +321,7 @@ function render() {
     now.innerHTML = `<span class="status"><span class="dot"></span>STANDBY</span>
       <div class="song-title" style="font-size:24px">곧 무대가 시작돼요</div>
       <div class="song-artist">무대가 끝날 때마다 이 화면에서 투표가 열려요</div>
-      <button class="vote wait" disabled><span class="h">♡</span>MIC CHECK</button>
+      <button class="vote wait" disabled><span class="logo" aria-hidden="true"></span>MIC CHECK</button>
       <div class="hint">화면을 켜 둔 채로 기다려 주세요</div>`;
   } else {
     const st = S.phase === 'performing' ? ['live', 'LIVE NOW'] : S.phase === 'voting' ? ['open', 'VOTE OPEN'] : ['', 'VOTE CLOSED'];
@@ -328,22 +332,22 @@ function render() {
     let btn = '';
     const n = myCount(c.id);
     if (S.phase === 'voting' && n === 0) {
-      btn = `<button class="vote pulse" id="voteBtn"><span class="h">♥</span>FEEL SO GOOD<small>이 무대 좋았어요!</small></button>
+      btn = `<button class="vote pulse" id="voteBtn"><span class="logo" aria-hidden="true"></span>FEEL SO GOOD<small>이 무대 좋았어요!</small></button>
         ${pips(0)}<div class="hint">무대마다 두 번까지 투표할 수 있어요</div>`;
     } else if (S.phase === 'voting' && n < MAXV()) {
-      btn = `<button class="vote again" id="voteBtn"><span class="h">♥</span>ONE MORE<small>한 번 더 투표하기</small></button>
+      btn = `<button class="vote again" id="voteBtn"><span class="logo" aria-hidden="true"></span>ONE MORE<small>한 번 더 투표하기</small></button>
         ${pips(n)}<div class="hint">정말 좋았다면 한 번 더!</div>`;
     } else if (n >= MAXV()) {
-      btn = `<button class="vote done" disabled><span class="h">✓</span>VOTED ×${n}<small>투표를 마쳤어요</small></button>
+      btn = `<button class="vote done" disabled><span class="logo" aria-hidden="true"></span>✓ VOTED ×${n}<small>투표를 마쳤어요</small></button>
         ${pips(n)}<div class="hint">다음 무대도 기대해 주세요</div>`;
     } else if (n > 0) {
-      btn = `<button class="vote done" disabled><span class="h">✓</span>VOTED<small>마음을 남겼어요</small></button>
+      btn = `<button class="vote done" disabled><span class="logo" aria-hidden="true"></span>✓ VOTED<small>마음을 남겼어요</small></button>
         ${pips(n)}<div class="hint">다음 무대를 기다려 주세요</div>`;
     } else if (S.phase === 'performing') {
-      btn = `<button class="vote wait" disabled><span class="h">♡</span>ON STAGE<small>공연 후 열려요</small></button>
+      btn = `<button class="vote wait" disabled><span class="logo" aria-hidden="true"></span>ON STAGE<small>공연 후 열려요</small></button>
         <div class="hint">무대가 끝나면 버튼이 켜져요</div>`;
     } else {
-      btn = `<button class="vote wait" disabled><span class="h">♡</span>CLOSED<small>투표 마감</small></button>
+      btn = `<button class="vote wait" disabled><span class="logo" aria-hidden="true"></span>CLOSED<small>투표 마감</small></button>
         <div class="hint">다음 무대를 기다려 주세요</div>`;
     }
     now.innerHTML = head + btn;
