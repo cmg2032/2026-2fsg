@@ -196,6 +196,26 @@
   .foot { text-align: center; margin-top: 26px; font-size: 12px; color: var(--muted); line-height: 1.7; }
   .foot b { font-family: var(--display); font-weight: 400; color: var(--lav-2); letter-spacing: 0.08em; }
 
+  /* 투표 확인 창 */
+  .ask { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center; padding: 24px;
+    background: rgba(12, 14, 50, 0.72); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+  .ask.show { display: flex; animation: fade 0.15s ease-out; }
+  @keyframes fade { from { opacity: 0; } }
+  .ask .box { position: relative; width: 100%; max-width: 340px; background: #2b2f86; border: 1px solid var(--line); border-radius: 4px;
+    padding: 24px 20px 18px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.45); animation: pop 0.18s ease-out; }
+  @keyframes pop { from { transform: scale(0.92); } }
+  .ask .box::before, .ask .box::after { content: ''; position: absolute; width: 14px; height: 14px; border: 2px solid var(--lime); }
+  .ask .box::before { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
+  .ask .box::after { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
+  .ask .mark-logo { width: 48px; height: 48px; margin: 0 auto 10px; background: var(--lime);
+    -webkit-mask: url('/fsg-logo.png') center / contain no-repeat; mask: url('/fsg-logo.png') center / contain no-repeat; }
+  .ask .q { font-size: 19px; font-weight: 800; line-height: 1.4; word-break: keep-all; }
+  .ask .q b { color: var(--lime); }
+  .ask .sub { margin-top: 6px; font-size: 13px; color: var(--lav-2); }
+  .ask .btns { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; margin-top: 20px; }
+  .ask .btns button { padding: 13px 0; border-radius: 3px; font-size: 15px; font-weight: 800; }
+  .ask .no { background: rgba(184,189,246,0.14); color: var(--ink); border: 1px solid var(--line); }
+  .ask .yes { background: var(--lime); color: #1d2160; box-shadow: -3px 0 0 var(--teal), 3px 0 0 var(--lav); }
   /* 연결 끊김 표시 */
   .net { position: fixed; left: 50%; top: 12px; transform: translate(-50%, -160%); z-index: 20;
     display: flex; align-items: center; gap: 8px; white-space: nowrap;
@@ -249,6 +269,14 @@
   <div class="foot">
     <div id="eventInfo" style="white-space: pre-line"></div>
     <b>ONE LAST TIME, THIS SEMESTER!</b>
+  </div>
+</div>
+<div class="ask" id="ask" role="dialog" aria-modal="true" aria-labelledby="askQ">
+  <div class="box">
+    <div class="mark-logo" aria-hidden="true"></div>
+    <div class="q" id="askQ"></div>
+    <div class="sub" id="askSub"></div>
+    <div class="btns"><button class="no" id="askNo">취소</button><button class="yes" id="askYes">투표하기</button></div>
   </div>
 </div>
 <div class="net" id="net" role="status" aria-live="polite"><span class="spin"></span>연결이 끊겼어요 · 다시 연결하는 중…</div>
@@ -342,6 +370,10 @@ function render() {
   const c = S.current;
   const now = $('now');
   document.body.classList.toggle('active', !!c && S.phase !== 'idle');
+  if (asking && (!c || c.id !== asking || S.phase !== 'voting' || myCount(asking) >= MAXV())) {
+    closeAsk();
+    if (S.phase !== 'voting') toast('투표가 마감됐어요');
+  }
   if (!c || S.phase === 'idle') {
     now.innerHTML = `<span class="status"><span class="dot"></span>STANDBY</span>
       <div class="song-title" style="font-size:24px">곧 무대가 시작돼요</div>
@@ -377,7 +409,7 @@ function render() {
     }
     now.innerHTML = head + btn;
     const vb = $('voteBtn');
-    if (vb) vb.onclick = () => vote(c.id);
+    if (vb) vb.onclick = () => askVote(c);
   }
 
   // 결과
@@ -410,6 +442,24 @@ function render() {
       ${myCount(s.id) ? `<span class="mark">${'<span class="fsg" aria-hidden="true"></span>'.repeat(myCount(s.id))} VOTED</span>` : ''}
     </li>`).join('');
 }
+
+// ---------- 투표 전 확인 ----------
+let asking = null; // 확인 창을 띄운 곡 id
+function askVote(c) {
+  const n = myCount(c.id);
+  $('askQ').innerHTML = n === 0
+    ? `<b>${esc(c.title)}</b>에<br />투표할까요?`
+    : `<b>${esc(c.title)}</b>에<br />두 번째 투표를 할까요?`;
+  $('askSub').textContent = n === 0 ? '무대마다 두 번까지 투표할 수 있어요' : '두 번째 투표를 하면 이 무대 투표는 끝나요';
+  $('askYes').textContent = n === 0 ? '투표하기' : '한 번 더 투표하기';
+  asking = c.id;
+  $('ask').classList.add('show');
+}
+function closeAsk() { asking = null; $('ask').classList.remove('show'); }
+$('askNo').onclick = closeAsk;
+$('ask').onclick = (e) => { if (e.target.id === 'ask') closeAsk(); };
+$('askYes').onclick = () => { const id = asking; closeAsk(); if (id) vote(id); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAsk(); });
 
 async function vote(songId) {
   if (sending) return;
