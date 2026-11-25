@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin1234';
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const VOTES_PER_SONG = 2; // 한 기기가 한 무대에 투표할 수 있는 횟수
 
 if (!process.env.ADMIN_PASSWORD) {
   console.warn('[경고] ADMIN_PASSWORD 환경변수가 없어 기본 비밀번호(admin1234)를 사용합니다.');
@@ -33,7 +34,7 @@ function defaultState() {
     currentSongId: null,
     phase: 'idle', // idle | performing | voting | closed
     showResults: false,
-    votes: {}, // songId -> { deviceId: timestamp }
+    votes: {}, // songId -> { deviceId: 투표 횟수(1~VOTES_PER_SONG) }
     epoch: crypto.randomBytes(6).toString('hex'), // 초기화할 때마다 바뀌는 회차 값
     updatedAt: Date.now(),
   };
@@ -60,8 +61,10 @@ function save() {
   }, 300);
 }
 
+// 예전 형식(값이 타임스탬프)은 1표로 취급
+function n(v) { return v >= 1 && v <= VOTES_PER_SONG ? v : 1; }
 function countFor(songId) {
-  return Object.keys(state.votes[songId] || {}).length;
+  return Object.values(state.votes[songId] || {}).reduce((a, v) => a + n(v), 0);
 }
 
 function results() {
@@ -77,7 +80,9 @@ function results() {
 function publicState(deviceId) {
   const songs = [...state.songs].sort((a, b) => a.order - b.order);
   const current = songs.find((s) => s.id === state.currentSongId) || null;
-  const myVotes = songs.filter((s) => state.votes[s.id] && state.votes[s.id][deviceId]).map((s) => s.id);
+  const myCounts = {};
+  songs.forEach((s) => { const v = state.votes[s.id] && state.votes[s.id][deviceId]; if (v) myCounts[s.id] = n(v); });
+  const myVotes = Object.keys(myCounts);
   const out = {
     eventTitle: state.eventTitle,
     eventInfo: state.eventInfo,
@@ -86,6 +91,8 @@ function publicState(deviceId) {
     current,
     phase: state.phase,
     myVotes,
+    myCounts,
+    votesPerSong: VOTES_PER_SONG,
     showResults: state.showResults,
     epoch: state.epoch,
   };
@@ -177,10 +184,11 @@ const server = http.createServer(async (req, res) => {
         return sendJSON(res, 409, { error: '지금은 이 무대의 투표 시간이 아니에요.' });
       }
       const box = (state.votes[body.songId] = state.votes[body.songId] || {});
-      if (box[deviceId]) return sendJSON(res, 409, { error: '이미 이 무대에 투표했어요.' });
-      box[deviceId] = Date.now();
+      const had = box[deviceId] ? n(box[deviceId]) : 0;
+      if (had >= VOTES_PER_SONG) return sendJSON(res, 409, { error: `이미 이 무대에 ${VOTES_PER_SONG}번 투표했어요.`, count: had });
+      box[deviceId] = had + 1;
       save();
-      return sendJSON(res, 200, { ok: true });
+      return sendJSON(res, 200, { ok: true, count: had + 1, max: VOTES_PER_SONG });
     }
 
     // 관리자 API
@@ -290,5 +298,14 @@ const server = http.createServer(async (req, res) => {
     sendJSON(res, 500, { error: '서버 오류' });
   }
 });
+
+// 서버가 꺼질 때(재배포·재시작) 아직 저장 안 된 표를 바로 기록
+function flushAndExit() {
+  clearTimeout(saveTimer);
+  try { state.updatedAt = Date.now(); fs.writeFileSync(DATA_FILE, JSON.stringify(state)); } catch (e) { console.error('저장 실패', e); }
+  process.exit(0);
+}
+process.on('SIGTERM', flushAndExit);
+process.on('SIGINT', flushAndExit);
 
 server.listen(PORT, () => console.log(`투표 서버 실행 중: http://localhost:${PORT}`));

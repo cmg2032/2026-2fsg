@@ -137,6 +137,19 @@
   .vote.pulse::after { content: ''; position: absolute; inset: -10px; border-radius: 50%; border: 2px solid var(--lime); animation: ring 1.4s infinite; }
   @keyframes ring { from { transform: scale(0.95); opacity: 0.9; } to { transform: scale(1.18); opacity: 0; } }
   .vote:disabled { cursor: default; }
+  /* 한 번 투표한 뒤: 더 밝고 강하게 */
+  .vote.again {
+    background: radial-gradient(circle at 32% 28%, #f6ffd2, #dcff6e 40%, var(--lime) 70%, #7fd12a);
+    box-shadow: -6px 0 0 rgba(60,199,180,0.85), 6px 0 0 rgba(184,189,246,0.75), 0 0 0 6px rgba(200,242,90,0.25), 0 16px 56px rgba(200,242,90,0.6);
+    transform: scale(1.04); animation: throb 1s ease-in-out infinite;
+  }
+  .vote.again .h { font-size: 64px; text-shadow: 0 0 18px rgba(255,255,255,0.8); }
+  .vote.again::before { content: ''; position: absolute; inset: -20px; border-radius: 50%; border: 2px solid rgba(200,242,90,0.6); animation: ring 1.4s 0.5s infinite; }
+  .vote.again:active { transform: scale(0.96); animation: none; }
+  @keyframes throb { 50% { transform: scale(1.08); } }
+  .pips { display: flex; justify-content: center; gap: 8px; margin: 2px 0 8px; }
+  .pips i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--lime); }
+  .pips i.on { background: var(--lime); box-shadow: 0 0 8px var(--lime); }
   .vote.wait { background: transparent; color: var(--muted); border: 2px dashed var(--line); box-shadow: none; }
   .vote.done { background: radial-gradient(circle at 32% 28%, #ffffff, var(--lav) 55%, #8d93e6); box-shadow: 0 14px 40px rgba(184,189,246,0.35); }
   .hint { font-size: 13px; color: var(--lav-2); }
@@ -185,7 +198,7 @@
   .toast.show { opacity: 1; }
 
   @media (prefers-reduced-motion: reduce) {
-    .eq i, .band .track, .vote.pulse::after, .status .dot { animation: none !important; }
+    .eq i, .band .track, .vote.pulse::after, .vote.again, .vote.again::before, .status .dot { animation: none !important; }
   }
 </style>
 </head>
@@ -211,7 +224,7 @@
   <section class="panel" id="now"></section>
 
   <div id="resultsBox" hidden>
-    <div class="sec">RANKING</div>
+    <div class="sec">TOP 5</div>
     <ol class="ranking" id="ranking"></ol>
   </div>
 
@@ -220,7 +233,7 @@
 
   <div class="foot">
     <div id="eventInfo"></div>
-    한 기기당 무대마다 한 번씩 투표할 수 있어요<br />
+    한 기기당 무대마다 두 번까지 투표할 수 있어요<br />
     <b>ONE LAST TIME, THIS SEMESTER!</b>
   </div>
 </div>
@@ -257,17 +270,18 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
   $('glyphs').textContent = out;
 })();
 
-// 서버 쿠키가 지워져도 같은 브라우저에서 투표 여부가 화면에 반영되도록 로컬에도 기록.
+// 서버 쿠키가 지워져도 같은 브라우저에서 투표 횟수가 화면에 반영되도록 로컬에도 기록.
 // 운영진이 '전체 투표 초기화'를 하면 epoch 값이 바뀌고, 그때 로컬 기록도 비웁니다.
-function readLocal() { try { return JSON.parse(localStorage.getItem('voted2') || '{}'); } catch { return {}; } }
-function writeLocal(o) { try { localStorage.setItem('voted2', JSON.stringify(o)); } catch {} }
+const LS = 'voted3';
+function readLocal() { try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch { return {}; } }
+function writeLocal(o) { try { localStorage.setItem(LS, JSON.stringify(o)); } catch {} }
 function syncEpoch(epoch) {
-  try { localStorage.removeItem('voted'); } catch {}
+  try { localStorage.removeItem('voted'); localStorage.removeItem('voted2'); } catch {}
   const o = readLocal();
-  if (o.epoch !== epoch) writeLocal({ epoch, ids: [] });
+  if (o.epoch !== epoch) writeLocal({ epoch, counts: {} });
 }
-function localVoted() { const o = readLocal(); return S && o.epoch === S.epoch ? o.ids || [] : []; }
-function markLocal(id) { const o = readLocal(); if (!S || o.epoch !== S.epoch) return; o.ids = o.ids || []; if (!o.ids.includes(id)) { o.ids.push(id); writeLocal(o); } }
+function localCounts() { const o = readLocal(); return S && o.epoch === S.epoch ? o.counts || {} : {}; }
+function setLocal(id, n) { const o = readLocal(); if (!S || o.epoch !== S.epoch) return; o.counts = o.counts || {}; o.counts[id] = Math.max(o.counts[id] || 0, n); writeLocal(o); }
 
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
@@ -281,12 +295,14 @@ async function load() {
     S = await r.json();
     syncEpoch(S.epoch);
     // 바뀐 게 있을 때만 다시 그려서 버튼 누르는 순간 화면이 교체되지 않게 함
-    const key = JSON.stringify([S, localVoted()]);
+    const key = JSON.stringify([S, localCounts()]);
     if (key !== lastKey) { lastKey = key; render(); }
   } catch {}
 }
 
-function voted(id) { return S.myVotes.includes(id) || localVoted().includes(id); }
+const MAXV = () => S.votesPerSong || 2;
+function myCount(id) { return Math.min(MAXV(), Math.max((S.myCounts || {})[id] || 0, localCounts()[id] || 0)); }
+const pips = (n) => `<div class="pips">${Array.from({ length: MAXV() }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</div>`;
 const pad = (n) => String(n).padStart(2, '0');
 
 function render() {
@@ -310,15 +326,22 @@ function render() {
       <div class="song-title">${esc(c.title)}</div>
       <div class="song-artist">${esc(c.artist)}</div>`;
     let btn = '';
-    if (voted(c.id)) {
+    const n = myCount(c.id);
+    if (S.phase === 'voting' && n === 0) {
+      btn = `<button class="vote pulse" id="voteBtn"><span class="h">♥</span>FEEL SO GOOD<small>이 무대 좋았어요!</small></button>
+        ${pips(0)}<div class="hint">무대마다 두 번까지 투표할 수 있어요</div>`;
+    } else if (S.phase === 'voting' && n < MAXV()) {
+      btn = `<button class="vote again" id="voteBtn"><span class="h">♥</span>ONE MORE<small>한 번 더 투표하기</small></button>
+        ${pips(n)}<div class="hint">정말 좋았다면 한 번 더!</div>`;
+    } else if (n >= MAXV()) {
+      btn = `<button class="vote done" disabled><span class="h">✓</span>VOTED ×${n}<small>투표를 마쳤어요</small></button>
+        ${pips(n)}<div class="hint">다음 무대도 기대해 주세요</div>`;
+    } else if (n > 0) {
       btn = `<button class="vote done" disabled><span class="h">✓</span>VOTED<small>마음을 남겼어요</small></button>
-        <div class="hint">다음 무대도 기대해 주세요</div>`;
+        ${pips(n)}<div class="hint">다음 무대를 기다려 주세요</div>`;
     } else if (S.phase === 'performing') {
       btn = `<button class="vote wait" disabled><span class="h">♡</span>ON STAGE<small>공연 후 열려요</small></button>
         <div class="hint">무대가 끝나면 버튼이 켜져요</div>`;
-    } else if (S.phase === 'voting') {
-      btn = `<button class="vote pulse" id="voteBtn"><span class="h">♥</span>FEEL SO GOOD<small>이 무대 좋았어요!</small></button>
-        <div class="hint">마음에 들었다면 눌러주세요</div>`;
     } else {
       btn = `<button class="vote wait" disabled><span class="h">♡</span>CLOSED<small>투표 마감</small></button>
         <div class="hint">다음 무대를 기다려 주세요</div>`;
@@ -337,8 +360,10 @@ function render() {
     const sorted = [...res.songs].sort((a, b) => b.votes - a.votes || a.order - b.order);
     const max = Math.max(1, sorted[0] ? sorted[0].votes : 1);
     let pos = 0;
-    $('ranking').innerHTML = sorted.map((s, i) => {
-      if (i === 0 || s.votes !== sorted[i - 1].votes) pos = i + 1;
+    const ranked = sorted.map((s, i) => { if (i === 0 || s.votes !== sorted[i - 1].votes) pos = i + 1; return { ...s, pos }; })
+      .filter((s) => s.pos <= 5 && s.votes > 0);
+    $('ranking').innerHTML = ranked.length ? ranked.map((s) => {
+      const pos = s.pos;
       const cls = [s.votes > 0 && pos <= 3 ? 'top' : '', s.votes > 0 && pos === 1 ? 'top1' : '', s.votes === 0 ? 'zero' : ''].join(' ');
       return `<li class="${cls}">
         <span class="pos">${pos}</span>
@@ -346,14 +371,14 @@ function render() {
         <span class="v">♥ ${s.votes}</span>
         <div class="bar"><i style="width:${(s.votes / max) * 100}%;background:var(--${s.team === 'A' ? 'lime' : 'lav'})"></i></div>
       </li>`;
-    }).join('');
+    }).join('') : '<li><span></span><span class="t"><b>아직 집계된 표가 없어요</b></span></li>';
   }
 
   $('setlist').innerHTML = S.songs.map((s) => `
     <li class="${c && s.id === c.id && S.phase !== 'idle' ? 'cur' : ''}">
       <span class="no">${pad(s.order)}</span>
       <span class="t"><b>${esc(s.title)}</b><small><span class="team team-${s.team}">${esc(S.teams[s.team])}</span>${esc(s.artist)}</small></span>
-      ${voted(s.id) ? '<span class="mark">♥ VOTED</span>' : ''}
+      ${myCount(s.id) ? `<span class="mark">${'♥'.repeat(myCount(s.id))} VOTED</span>` : ''}
     </li>`).join('');
 }
 
@@ -364,11 +389,11 @@ async function vote(songId) {
     const r = await fetch('/api/vote', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ songId }) });
     const d = await r.json();
     if (r.ok) {
-      markLocal(songId);
-      if (navigator.vibrate) navigator.vibrate(40);
-      toast('투표 완료! FEEL SO GOOD ♥');
+      setLocal(songId, d.count || 1);
+      if (navigator.vibrate) navigator.vibrate(d.count >= (d.max || 2) ? [40, 60, 40] : 40);
+      toast(d.count >= (d.max || 2) ? '두 번 모두 투표했어요! FEEL SO GOOD ♥♥' : '투표 완료! 한 번 더 할 수 있어요 ♥');
     } else {
-      if (d.error && d.error.includes('이미')) markLocal(songId);
+      if (d.count) setLocal(songId, d.count);
       toast(d.error || '투표에 실패했어요');
     }
   } catch { toast('네트워크를 확인해 주세요'); }
