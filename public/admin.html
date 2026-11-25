@@ -65,6 +65,9 @@
   .bar { height: 6px; background: rgba(16,18,60,0.7); overflow: hidden; }
   .bar > i { display: block; height: 100%; transition: width 0.4s; }
 
+  /* FSG 로고 아이콘 (글자색을 따라감) */
+  .fsg { display: inline-block; width: 0.95em; height: 1.3em; vertical-align: -0.3em; background: currentColor;
+    -webkit-mask: url('/fsg-logo.png') center / contain no-repeat; mask: url('/fsg-logo.png') center / contain no-repeat; }
   /* 상태 */
   .status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
@@ -156,7 +159,7 @@
       <div class="row" style="margin-top:14px;flex-wrap:wrap" id="quick"></div>
     </div>
 
-    <h2>RANKING <span class="ko">곡별 득표 순위 <span id="devices"></span></span></h2>
+    <h2>RANKING <span class="ko">곡별 득표 순위 · 1인 무대당 최대 2표 <span id="devices"></span></span></h2>
     <div class="card" style="padding:6px 14px"><ol class="rank" id="ranking"></ol></div>
     <div class="row" style="margin-top:12px;justify-content:space-between;flex-wrap:wrap">
       <label class="switch"><input type="checkbox" id="showResults" /> 관객 화면·대형 화면에 결과 공개</label>
@@ -253,7 +256,7 @@ function renderLive() {
   const cur = S.songs.find((s) => S.current && s.id === S.current.id);
   $('dot').className = 'dot ' + S.phase;
   $('statusText').textContent = cur ? `${PHASE[S.phase]} · ${cur.order}. ${cur.title}` : '대기 중';
-  $('statusSub').textContent = cur ? [S.teams[cur.team], cur.artist, `현재 ♥ ${cur.votes}`].filter(Boolean).join(' · ') : '아래 목록에서 첫 곡의 [공연 시작]을 누르면 시작돼요.';
+  $('statusSub').innerHTML = cur ? [esc(S.teams[cur.team]), esc(cur.artist), `현재 <span class="fsg" aria-hidden="true"></span> ${cur.votes}표`].filter(Boolean).join(' · ') : '아래 목록에서 첫 곡의 [공연 시작]을 누르면 시작돼요.';
 
   // 빠른 진행 버튼: 현재 상태에서 자연스러운 다음 동작
   const q = $('quick');
@@ -281,7 +284,7 @@ function renderLive() {
       <span class="pos">${pos}</span>
       <span class="t"><div class="line"><span class="team-tag team-${s.team}">${esc(S.teams[s.team])}</span> <b>${esc(s.title)}</b></div><small>${esc(s.artist)}</small></span>
       <div class="bar"><i style="width:${(s.votes / top) * 100}%;background:var(--${s.team === 'A' ? 'a' : 'b'})"></i></div>
-      <span class="v">♥ ${s.votes}</span>
+      <span class="v"><span class="fsg" aria-hidden="true"></span> ${s.votes}</span>
     </li>`;
   }).join('');
   $('devices').textContent = `· 참여 기기 ${S.totalDevices}대`;
@@ -299,7 +302,7 @@ function renderLive() {
         <div class="bar" style="margin-top:6px"><i style="width:${(s.votes / max) * 100}%;background:var(--${s.team === 'A' ? 'a' : 'b'})"></i></div>
       </div>
       <div class="ctl">
-        <span class="count">♥ ${s.votes}</span>
+        <span class="count"><span class="fsg" aria-hidden="true"></span> ${s.votes}</span>
         <button class="btn" data-a="perform" data-id="${s.id}" ${ph === 'performing' ? 'disabled' : ''}>공연 시작</button>
         <button class="btn ${ph === 'performing' ? 'btn-primary' : ''}" data-a="open" data-id="${s.id}" ${ph === 'voting' ? 'disabled' : ''}>${ph === 'closed' ? '투표 재개' : '투표 열기'}</button>
         <button class="btn ${ph === 'voting' ? 'btn-primary' : ''}" data-a="close" data-id="${s.id}" ${ph !== 'voting' ? 'disabled' : ''}>마감</button>

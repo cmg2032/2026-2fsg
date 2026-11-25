@@ -79,6 +79,9 @@
   .rank .v { font-size: 2.4vw; font-weight: 900; }
   .rank li.zero .t b, .rank li.zero .v { color: var(--muted); }
 
+  /* FSG 로고 아이콘 (글자색을 따라감) */
+  .fsg { display: inline-block; width: 0.95em; height: 1.3em; vertical-align: -0.3em; background: currentColor;
+    -webkit-mask: url('/fsg-logo.png') center / contain no-repeat; mask: url('/fsg-logo.png') center / contain no-repeat; }
   /* QR */
   .qr { align-self: center; background: var(--glass); border: 0.1vw solid var(--line); padding: 1.6vw; text-align: center; position: relative;
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
@@ -191,7 +194,7 @@ function render(S) {
         const cls = [s.votes > 0 && pos <= 3 ? 'podium' : '', s.votes > 0 && pos === 1 ? 'top1' : '', s.votes === 0 ? 'zero' : ''].join(' ');
         return `<li class="${cls}"><span class="pos">${pos}</span>
           <span class="t"><b>${esc(s.title)}</b><small><span class="team team-${s.team}">${esc(S.teams[s.team])}</span>${esc(s.artist)}</small></span>
-          <span class="v">♥ ${s.votes}</span></li>`;
+          <span class="v"><span class="fsg" aria-hidden="true"></span> ${s.votes}</span></li>`;
       }).join('')}</ol>`;
   } else if (!active) {
     html = `<h1 class="idle-brand"><span>Feel</span><span>So</span><span>Good</span></h1>
@@ -201,7 +204,7 @@ function render(S) {
   } else {
     const st = S.phase === 'performing' ? ['live', 'NOW ON STAGE'] : S.phase === 'voting' ? ['open', 'VOTE OPEN'] : ['', 'VOTE CLOSED'];
     const call = S.phase === 'voting'
-      ? '<div class="call open">♥ 지금 투표하세요! 무대마다 두 번까지 FEEL SO GOOD</div>'
+      ? '<div class="call open"><span class="fsg" aria-hidden="true"></span> 지금 투표하세요! 무대마다 두 번까지 FEEL SO GOOD</div>'
       : S.phase === 'performing' ? '<div class="call">무대가 끝나면 투표가 열려요</div>'
       : '<div class="call">투표가 마감됐어요 · 다음 무대를 기다려 주세요</div>';
     html = `<span class="status ${st[0]}"><span class="dot"></span>${st[1]}</span>

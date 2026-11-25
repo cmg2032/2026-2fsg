@@ -161,6 +161,9 @@
   /* ---------- 결과 ---------- */
   .sec { font-family: var(--display); font-size: 15px; letter-spacing: 0.14em; margin: 30px 0 10px; display: flex; align-items: center; gap: 10px; color: var(--lav-2); }
   .sec::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  /* FSG 로고 아이콘 (글자색을 따라감) */
+  .fsg { display: inline-block; width: 0.95em; height: 1.3em; vertical-align: -0.3em; background: currentColor;
+    -webkit-mask: url('/fsg-logo.png') center / contain no-repeat; mask: url('/fsg-logo.png') center / contain no-repeat; }
   /* 곡별 득표 순위 */
   .ranking { list-style: none; margin: 0; padding: 4px 12px; background: var(--glass); border: 1px solid var(--line); border-radius: 4px;
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
@@ -372,7 +375,7 @@ function render() {
       return `<li class="${cls}">
         <span class="pos">${pos}</span>
         <span class="t"><b>${esc(s.title)}</b><small><span class="team team-${s.team}">${esc(S.teams[s.team])}</span>${esc(s.artist)}</small></span>
-        <span class="v">♥ ${s.votes}</span>
+        <span class="v"><span class="fsg" aria-hidden="true"></span> ${s.votes}</span>
         <div class="bar"><i style="width:${(s.votes / max) * 100}%;background:var(--${s.team === 'A' ? 'lime' : 'lav'})"></i></div>
       </li>`;
     }).join('') : '<li><span></span><span class="t"><b>아직 집계된 표가 없어요</b></span></li>';
@@ -382,7 +385,7 @@ function render() {
     <li class="${c && s.id === c.id && S.phase !== 'idle' ? 'cur' : ''}">
       <span class="no">${pad(s.order)}</span>
       <span class="t"><b>${esc(s.title)}</b><small><span class="team team-${s.team}">${esc(S.teams[s.team])}</span>${esc(s.artist)}</small></span>
-      ${myCount(s.id) ? `<span class="mark">${'♥'.repeat(myCount(s.id))} VOTED</span>` : ''}
+      ${myCount(s.id) ? `<span class="mark">${'<span class="fsg" aria-hidden="true"></span>'.repeat(myCount(s.id))} VOTED</span>` : ''}
     </li>`).join('');
 }
 
@@ -395,7 +398,7 @@ async function vote(songId) {
     if (r.ok) {
       setLocal(songId, d.count || 1);
       if (navigator.vibrate) navigator.vibrate(d.count >= (d.max || 2) ? [40, 60, 40] : 40);
-      toast(d.count >= (d.max || 2) ? '두 번 모두 투표했어요! FEEL SO GOOD ♥♥' : '투표 완료! 한 번 더 할 수 있어요 ♥');
+      toast(d.count >= (d.max || 2) ? '두 번 모두 투표했어요! FEEL SO GOOD' : '투표 완료! 한 번 더 할 수 있어요');
     } else {
       if (d.count) setLocal(songId, d.count);
       toast(d.error || '투표에 실패했어요');
