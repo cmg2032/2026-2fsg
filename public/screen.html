@@ -29,7 +29,7 @@
     color: var(--lav-2); opacity: 0.18; padding: 0.6vw 0 0 0.8vw;
     -webkit-mask-image: linear-gradient(90deg, #000 30%, transparent); mask-image: linear-gradient(90deg, #000 30%, transparent); }
 
-  .stage { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; padding: 3.2vw 4vw 0; }
+  .stage { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 38vw; grid-template-rows: auto 1fr auto; column-gap: 3vw; padding: 3.2vw 4vw 0; }
 
   /* 상단 */
   .top { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: flex-start; font-size: 1.1vw; color: var(--muted); letter-spacing: 0.04em; }
@@ -37,8 +37,45 @@
   .brand { font-family: var(--display); font-size: 3.4vw; line-height: 1; color: var(--ink); margin: 0.3vw 0 0;
     text-shadow: 0.15vw 0.15vw 0 var(--lav), 0 0 1.6vw rgba(184,189,246,0.35); }
   .brand + div { margin-top: 0.6vw; font-size: 1.2vw; color: var(--lav-2); }
-  .eq { position: fixed; right: 4vw; top: 7.5vw; width: 27vw; height: 5vw; display: flex; align-items: flex-end; gap: 0.3vw; opacity: 0.45; z-index: -1; }
-  .eq i { flex: 1; background: var(--lav); height: 30%; animation: eq 1.2s ease-in-out infinite alternate; }
+  /* ---------- 턴테이블: 회전하는 LP + 원형 이퀄라이저 ---------- */
+  .top { grid-row: 1; }
+  .main { grid-column: 1; grid-row: 2; }
+  .band { grid-row: 3; }
+  .deck { grid-column: 2; grid-row: 2; align-self: center; justify-self: center; position: relative; width: 38vw; height: 38vw; }
+  .deck .glow { position: absolute; inset: 14%; border-radius: 50%; background: radial-gradient(circle, rgba(184,189,246,0.35), transparent 70%); filter: blur(2vw); transition: background 0.6s; }
+  .ring { position: absolute; inset: 0; }
+  .ring i { position: absolute; left: 50%; bottom: 50%; width: 0.55vw; height: 5.2vw; margin-left: -0.275vw; transform-origin: 50% 100%; }
+  .ring i b { display: block; width: 100%; height: 100%; border-radius: 0.3vw; transform-origin: 50% 100%;
+    background: linear-gradient(0deg, var(--lav), var(--lav-2)); animation: bar 0.9s ease-in-out infinite alternate; }
+  @keyframes bar { 0% { transform: scaleY(0.12); } 60% { transform: scaleY(0.55); } 100% { transform: scaleY(1); } }
+  .vinyl { position: absolute; inset: 21%; border-radius: 50%; animation: spin 3.6s linear infinite;
+    background:
+      radial-gradient(circle, transparent 0 31%, rgba(0,0,0,0) 31%),
+      repeating-radial-gradient(circle, #141633 0 0.18vw, #1d2050 0.18vw 0.36vw);
+    box-shadow: 0 0 0 0.35vw #0f1130, 0 1.6vw 4vw rgba(0,0,0,0.55), inset 0 0 2vw rgba(0,0,0,0.6); }
+  .vinyl::before { content: ''; position: absolute; inset: 0; border-radius: 50%;
+    background: conic-gradient(from 20deg, transparent 0 12%, rgba(255,255,255,0.16) 16%, transparent 22% 58%, rgba(255,255,255,0.12) 64%, transparent 70%); }
+  .vinyl .label { position: absolute; inset: 31%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #e6ff9e, var(--lime) 60%, #8fd13a);
+    display: grid; place-items: center; box-shadow: inset 0 0 0 0.25vw rgba(29,33,96,0.25); }
+  .vinyl .label .fsg-big { width: 52%; height: 62%; background: #1d2160;
+    -webkit-mask: url('/fsg-logo.png') center / contain no-repeat; mask: url('/fsg-logo.png') center / contain no-repeat; }
+  .vinyl .hole { position: absolute; left: 50%; top: 50%; width: 1vw; height: 1vw; margin: -0.5vw 0 0 -0.5vw; border-radius: 50%; background: #0f1130; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* 톤암 */
+  .arm { position: absolute; right: 3%; top: 6%; width: 22%; height: 52%; transform-origin: 78% 10%; transform: rotate(18deg); transition: transform 0.8s; }
+  .arm .base { position: absolute; right: 8%; top: 0; width: 5vw; height: 5vw; border-radius: 50%; background: radial-gradient(circle, #cfd3ff, #6f75c9 60%, #3a3f9e); box-shadow: 0 0.6vw 1.4vw rgba(0,0,0,0.45); }
+  .arm .rod { position: absolute; right: calc(8% + 2.3vw); top: 2.5vw; width: 0.5vw; height: 82%; border-radius: 0.3vw; background: linear-gradient(90deg, #9aa0ee, #eef0ff, #9aa0ee); }
+  .arm .head { position: absolute; right: calc(8% + 1.6vw); bottom: 0; width: 1.9vw; height: 3vw; border-radius: 0.3vw; background: #eef0ff; transform: rotate(-24deg); box-shadow: 0 0.4vw 0.8vw rgba(0,0,0,0.4); }
+  /* 상태별: 대기 → 천천히, 공연 중 → 보통, 투표 중 → 빠르고 라임색, 마감 직전 → 더 빠르게 */
+  body[data-mode="idle"] .vinyl { animation-duration: 6s; }
+  body[data-mode="idle"] .arm { transform: rotate(0deg); }
+  body[data-mode="idle"] .ring i b { animation-duration: 1.6s; opacity: 0.55; }
+  body[data-mode="voting"] .ring i b, body[data-mode="closing"] .ring i b { background: linear-gradient(0deg, var(--teal), var(--lime)); }
+  body[data-mode="voting"] .vinyl { animation-duration: 2.2s; }
+  body[data-mode="closing"] .vinyl { animation-duration: 1.2s; }
+  body[data-mode="closing"] .ring i b { animation-duration: 0.45s !important; }
+  body[data-mode="voting"] .deck .glow, body[data-mode="closing"] .deck .glow { background: radial-gradient(circle, rgba(200,242,90,0.45), transparent 70%); }
+  body[data-mode="results"] .ring i b { background: linear-gradient(0deg, var(--lav), var(--lime)); }
   @keyframes eq { 0% { height: 15%; } 100% { height: 100%; } }
 
   /* 본문 */
@@ -52,7 +89,7 @@
   @keyframes blink { 50% { opacity: 0.25; } }
   .team { display: inline-block; font-size: 1.3vw; font-weight: 800; letter-spacing: 0.06em; padding: 0.25vw 0.9vw; border-radius: 0.2vw; color: #1d2160; }
   .team-A { background: var(--lime); } .team-B { background: var(--lav); }
-  .title { font-size: 6.4vw; font-weight: 900; line-height: 1.08; letter-spacing: -0.03em; margin: 1.6vw 0 0.6vw; word-break: keep-all;
+  .title { font-size: 5.4vw; overflow-wrap: anywhere; font-weight: 900; line-height: 1.08; letter-spacing: -0.03em; margin: 1.6vw 0 0.6vw; word-break: keep-all;
     text-shadow: -0.35vw 0 rgba(60,199,180,0.75), 0.35vw 0 rgba(200,242,90,0.5); }
   .artist { font-size: 2.2vw; color: var(--lav-2); }
   .call { margin-top: 2.4vw; font-size: 2vw; font-weight: 800; }
@@ -66,7 +103,7 @@
   .idle-when { font-size: 1.9vw; font-weight: 700; margin-top: 0.8vw; }
 
   /* 결과: 곡별 득표 TOP 5 */
-  .rank { list-style: none; padding: 0; margin: 1.6vw 0 0; max-width: 52vw; }
+  .rank { list-style: none; padding: 0; margin: 1.6vw 0 0; max-width: 100%; }
   .rank li { display: grid; grid-template-columns: 4.4vw 1fr auto; align-items: center; gap: 1.2vw; padding: 0.8vw 1vw; border-bottom: 0.08vw solid var(--line); }
   .rank .pos { font-size: 2.6vw; font-weight: 900; color: var(--muted); text-align: center; }
   .rank li.podium .pos { color: var(--lime); font-size: 3.2vw; }
@@ -114,7 +151,6 @@
 <body>
 <div class="bg"></div>
 <div class="glyphs" id="glyphs" aria-hidden="true"></div>
-<div class="eq" id="eq" aria-hidden="true"></div>
 <div class="scan" aria-hidden="true"></div>
 
 <div class="net" id="net" role="status" aria-live="polite"><span class="spin"></span>연결이 끊겼어요 · 다시 연결하는 중…</div>
@@ -126,6 +162,13 @@
 
   <div class="main" id="main"></div>
 
+  <div class="deck" aria-hidden="true">
+    <div class="glow"></div>
+    <div class="ring" id="ring"></div>
+    <div class="vinyl"><div class="label"><div class="fsg-big"></div></div><div class="hole"></div></div>
+    <div class="arm"><div class="rod"></div><div class="base"></div><div class="head"></div></div>
+  </div>
+
   <div class="band"><div class="track" id="track"></div></div>
 </div>
 
@@ -136,12 +179,15 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 
 // 장식
 (function () {
-  const eq = $('eq');
-  for (let i = 0; i < 26; i++) {
-    const b = document.createElement('i');
-    b.style.animationDelay = (-Math.random() * 1.2).toFixed(2) + 's';
-    b.style.animationDuration = (0.8 + Math.random() * 0.9).toFixed(2) + 's';
-    eq.appendChild(b);
+  // LP판 둘레 원형 이퀄라이저 (막대마다 길이·속도를 조금씩 다르게)
+  const ring = $('ring'), N = 56, R = 13.4; // R: LP 중심에서 막대까지 거리(vw)
+  for (let i = 0; i < N; i++) {
+    const el = document.createElement('i'), bar = document.createElement('b');
+    el.style.transform = `rotate(${(360 / N) * i}deg) translateY(-${R}vw)`;
+    el.style.height = (3 + Math.random() * 2.8).toFixed(2) + 'vw';
+    bar.style.animationDelay = (-Math.random() * 1.2).toFixed(2) + 's';
+    bar.style.animationDuration = (0.55 + Math.random() * 0.7).toFixed(2) + 's';
+    el.appendChild(bar); ring.appendChild(el);
   }
   $('track').textContent = 'ONE LAST TIME, THIS SEMESTER! ✦ FEEL SO GOOD ✦ 2026-2 FSG 정기공연 ✦ '.repeat(6);
   const set = 'ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ<>∧∨⊐⊏ΞЭШZXNM_';
@@ -205,7 +251,7 @@ function render(S) {
   $('topLeft').innerHTML = (active || res)
     ? `<div class="brand">Feel So Good</div><div>${esc(S.eventTitle)}</div>`
     : '';
-  document.querySelector('.eq').style.display = (active || res) ? '' : 'none';
+  document.body.dataset.mode = res ? 'results' : !active ? 'idle' : S.phase === 'voting' ? (S.closing ? 'closing' : 'voting') : S.phase;
 
   let html = '';
   if (res) {
@@ -225,16 +271,13 @@ function render(S) {
   } else if (!active) {
     html = `<h1 class="idle-brand"><span>Feel</span><span>So</span><span>Good</span></h1>
       <div class="idle-sub">: The generation . . .</div>
-      <div class="idle-when">${esc(S.eventTitle)} · 11/26 THU 학생회관 소극장 19:00</div>
-      <div class="call">무대가 끝날 때마다 투표가 열려요</div>`;
+      <div class="idle-when">${esc(S.eventTitle)} · 11/26 THU 학생회관 소극장 19:00</div>`;
   } else {
     const st = S.phase === 'performing' ? ['live', 'NOW ON STAGE'] : S.phase === 'voting' ? ['open', S.closing ? 'LAST CALL' : 'VOTE OPEN'] : ['', 'VOTE CLOSED'];
     const call = S.phase === 'voting' && S.closing
       ? `<div class="call open"><span class="fsg" aria-hidden="true"></span> 투표 마감까지 <b class="cdbig" data-cd>${secsLeft()}</b>초!</div>`
-      : S.phase === 'voting'
-      ? '<div class="call open"><span class="fsg" aria-hidden="true"></span> 투표 OPEN · 무대마다 두 번까지 FEEL SO GOOD</div>'
-      : S.phase === 'performing' ? '<div class="call">무대가 끝나면 투표가 열려요</div>'
-      : '<div class="call">투표가 마감됐어요 · 다음 무대를 기다려 주세요</div>';
+      : S.phase === 'closed' ? '<div class="call">투표가 마감됐어요 · 다음 무대를 기다려 주세요</div>'
+      : '';
     html = `<span class="status ${st[0]}"><span class="dot"></span>${st[1]}</span>
       <div style="margin-top:1.8vw"><span class="team team-${c.team}">${esc(S.teams[c.team])}</span></div>
       <div class="title">${esc(c.title)}</div>
