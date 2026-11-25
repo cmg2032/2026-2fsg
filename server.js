@@ -103,10 +103,13 @@ function publicState(deviceId) {
 }
 
 // ---------- 관리자 인증 ----------
-const adminTokens = new Set();
+// 비밀번호에서 만든 고정 토큰: 서버가 재시작돼도 운영진이 다시 로그인할 필요가 없음
+// (비밀번호를 바꾸면 기존 로그인은 자동으로 풀림)
+const ADMIN_TOKEN = crypto.createHash('sha256').update('fsg-stage-vote:' + ADMIN_PASSWORD).digest('hex');
 function isAdmin(req) {
-  const t = req.headers['x-admin-token'];
-  return t && adminTokens.has(t);
+  const t = Buffer.from(String(req.headers['x-admin-token'] || ''));
+  const k = Buffer.from(ADMIN_TOKEN);
+  return t.length === k.length && crypto.timingSafeEqual(t, k);
 }
 
 // ---------- 유틸 ----------
@@ -199,9 +202,7 @@ const server = http.createServer(async (req, res) => {
       const a = Buffer.from(String(body.password || ''));
       const b = Buffer.from(ADMIN_PASSWORD);
       if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
-        const token = crypto.randomBytes(24).toString('hex');
-        adminTokens.add(token);
-        return sendJSON(res, 200, { token });
+        return sendJSON(res, 200, { token: ADMIN_TOKEN });
       }
       return sendJSON(res, 401, { error: '비밀번호가 맞지 않아요.' });
     }

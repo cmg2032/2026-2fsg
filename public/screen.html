@@ -91,6 +91,14 @@
   /* FSG 로고 아이콘 (글자색을 따라감) */
   .fsg { display: inline-block; width: 0.95em; height: 1.3em; vertical-align: -0.3em; background: currentColor;
     -webkit-mask: url('/fsg-logo.png') center / contain no-repeat; mask: url('/fsg-logo.png') center / contain no-repeat; }
+  /* 연결 끊김 표시 */
+  .net { position: fixed; right: 1.2vw; bottom: 4.4vw; left: auto; top: auto; transform: translateY(300%); z-index: 20;
+    display: flex; align-items: center; gap: 8px; white-space: nowrap;
+    background: #ff5f7e; color: #fff; font-weight: 800; font-size: 1vw; padding: 0.5vw 1vw; border-radius: 3px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.35); transition: transform 0.25s; }
+  .net.show { transform: translateY(0); }
+  .net .spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   /* QR */
   .qr { align-self: center; background: var(--glass); border: 0.1vw solid var(--line); padding: 1.6vw; text-align: center; position: relative;
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
@@ -118,6 +126,7 @@
 <div class="eq" id="eq" aria-hidden="true"></div>
 <div class="scan" aria-hidden="true"></div>
 
+<div class="net" id="net" role="status" aria-live="polite"><span class="spin"></span>연결이 끊겼어요 · 다시 연결하는 중…</div>
 <div class="stage">
   <div class="top">
     <div id="topLeft"></div>
@@ -169,12 +178,25 @@ try {
   $('glyphs').textContent = out;
 })();
 
+// ---------- 연결 상태 감시 ----------
+// 2번 연속 실패하거나 기기가 오프라인이 되면 '연결 끊김' 표시, 다시 성공하면 자동으로 숨김
+const NET = { fails: 0, down: false };
+async function fetchT(url, opts = {}, ms = 6000) {
+  const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+  try { return await fetch(url, { ...opts, signal: c.signal }); } finally { clearTimeout(t); }
+}
+function showNet(on) { const n = document.getElementById('net'); if (n) n.classList.toggle('show', on); }
+function netOk() { NET.fails = 0; if (NET.down) { NET.down = false; showNet(false); if (typeof toast === 'function') toast('다시 연결됐어요'); } }
+function netFail() { NET.fails++; if (!NET.down && (NET.fails >= 2 || !navigator.onLine)) { NET.down = true; showNet(true); } }
+window.addEventListener('offline', () => { NET.down = true; showNet(true); });
+window.addEventListener('online', () => load());
+
 const pad = (n) => String(n).padStart(2, '0');
 let lastKey = '';
 
 async function load() {
   let S;
-  try { S = await (await fetch('/api/state', { cache: 'no-store' })).json(); } catch { return; }
+  try { S = await (await fetchT('/api/state', { cache: 'no-store' })).json(); netOk(); } catch { netFail(); return; }
   const key = JSON.stringify([S.current, S.phase, S.showResults, S.results, S.teams, S.eventTitle]);
   if (key === lastKey) return;
   lastKey = key;

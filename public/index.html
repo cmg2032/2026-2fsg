@@ -196,6 +196,14 @@
   .foot { text-align: center; margin-top: 26px; font-size: 12px; color: var(--muted); line-height: 1.7; }
   .foot b { font-family: var(--display); font-weight: 400; color: var(--lav-2); letter-spacing: 0.08em; }
 
+  /* 연결 끊김 표시 */
+  .net { position: fixed; left: 50%; top: 12px; transform: translate(-50%, -160%); z-index: 20;
+    display: flex; align-items: center; gap: 8px; white-space: nowrap;
+    background: #ff5f7e; color: #fff; font-weight: 800; font-size: 14px; padding: 9px 16px; border-radius: 3px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.35); transition: transform 0.25s; }
+  .net.show { transform: translate(-50%, 0); }
+  .net .spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .toast {
     position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 10;
     background: var(--lime); color: #1d2160; font-weight: 800; padding: 10px 18px; border-radius: 2px;
@@ -243,6 +251,7 @@
     <b>ONE LAST TIME, THIS SEMESTER!</b>
   </div>
 </div>
+<div class="net" id="net" role="status" aria-live="polite"><span class="spin"></span>연결이 끊겼어요 · 다시 연결하는 중…</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -294,16 +303,30 @@ function toast(msg) {
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
+// ---------- 연결 상태 감시 ----------
+// 2번 연속 실패하거나 기기가 오프라인이 되면 '연결 끊김' 표시, 다시 성공하면 자동으로 숨김
+const NET = { fails: 0, down: false };
+async function fetchT(url, opts = {}, ms = 6000) {
+  const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+  try { return await fetch(url, { ...opts, signal: c.signal }); } finally { clearTimeout(t); }
+}
+function showNet(on) { const n = document.getElementById('net'); if (n) n.classList.toggle('show', on); }
+function netOk() { NET.fails = 0; if (NET.down) { NET.down = false; showNet(false); if (typeof toast === 'function') toast('다시 연결됐어요'); } }
+function netFail() { NET.fails++; if (!NET.down && (NET.fails >= 2 || !navigator.onLine)) { NET.down = true; showNet(true); } }
+window.addEventListener('offline', () => { NET.down = true; showNet(true); });
+window.addEventListener('online', () => load());
+
 let lastKey = '';
 async function load() {
   try {
-    const r = await fetch('/api/state', { credentials: 'same-origin', cache: 'no-store' });
+    const r = await fetchT('/api/state', { credentials: 'same-origin', cache: 'no-store' });
     S = await r.json();
+    netOk();
     syncEpoch(S.epoch);
     // 바뀐 게 있을 때만 다시 그려서 버튼 누르는 순간 화면이 교체되지 않게 함
     const key = JSON.stringify([S, localCounts()]);
     if (key !== lastKey) { lastKey = key; render(); }
-  } catch {}
+  } catch { netFail(); }
 }
 
 const MAXV = () => S.votesPerSong || 2;
@@ -392,7 +415,8 @@ async function vote(songId) {
   if (sending) return;
   sending = true;
   try {
-    const r = await fetch('/api/vote', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ songId }) });
+    if (NET.down) toast('연결이 불안정해요. 연결되면 다시 눌러주세요');
+    const r = await fetchT('/api/vote', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ songId }) });
     const d = await r.json();
     if (r.ok) {
       setLocal(songId, d.count || 1);
@@ -402,7 +426,7 @@ async function vote(songId) {
       if (d.count) setLocal(songId, d.count);
       toast(d.error || '투표에 실패했어요');
     }
-  } catch { toast('네트워크를 확인해 주세요'); }
+  } catch { netFail(); toast('연결 문제로 투표가 안 됐어요. 다시 눌러주세요'); }
   sending = false;
   load();
 }
