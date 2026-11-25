@@ -6,7 +6,6 @@
 <meta name="robots" content="noindex" />
 <title>Feel So Good · 대형 화면</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
-<script src="/qrcode.js"></script>
 <style>
   @font-face { font-family: 'Audiowide'; src: url('/fonts/audiowide.woff2') format('woff2'); font-display: swap; }
   @font-face { font-family: 'Share Tech Mono'; src: url('/fonts/sharetechmono.woff2') format('woff2'); font-display: swap; }
@@ -30,7 +29,7 @@
     color: var(--lav-2); opacity: 0.18; padding: 0.6vw 0 0 0.8vw;
     -webkit-mask-image: linear-gradient(90deg, #000 30%, transparent); mask-image: linear-gradient(90deg, #000 30%, transparent); }
 
-  .stage { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 27vw; grid-template-rows: auto 1fr auto; column-gap: 4vw; padding: 3.2vw 4vw 0; }
+  .stage { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; padding: 3.2vw 4vw 0; }
 
   /* 상단 */
   .top { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: flex-start; font-size: 1.1vw; color: var(--muted); letter-spacing: 0.04em; }
@@ -102,17 +101,6 @@
   .cdbig { display: inline-block; margin: 0 0.12em; text-align: center; font-family: var(--display); font-size: 1.5em; line-height: 1; vertical-align: -0.12em; }
   .cdbig.tick { animation: tick 0.35s ease-out; }
   @keyframes tick { from { transform: scale(1.4); } }
-  /* QR */
-  .qr { align-self: center; background: var(--glass); border: 0.1vw solid var(--line); padding: 1.6vw; text-align: center; position: relative;
-    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
-  .qr::before, .qr::after { content: ''; position: absolute; width: 1.4vw; height: 1.4vw; border: 0.2vw solid var(--lime); }
-  .qr::before { top: -0.2vw; left: -0.2vw; border-right: 0; border-bottom: 0; }
-  .qr::after { bottom: -0.2vw; right: -0.2vw; border-left: 0; border-top: 0; }
-  .qr .code { background: #fff; padding: 1vw; }
-  .qr .code svg { display: block; width: 100%; height: auto; }
-  .qr .t1 { font-family: var(--display); font-size: 1.6vw; margin-top: 1.2vw; letter-spacing: 0.06em; }
-  .qr .t2 { font-size: 1.15vw; color: var(--lav-2); margin-top: 0.4vw; }
-  .qr .u { font-family: var(--mono); font-size: 0.95vw; color: var(--muted); margin-top: 0.8vw; word-break: break-all; }
 
   /* 하단 라임 띠 */
   .band { grid-column: 1 / -1; margin: 0 -4vw; height: 3.4vw; overflow: hidden; position: relative;
@@ -138,13 +126,6 @@
 
   <div class="main" id="main"></div>
 
-  <div class="qr">
-    <div class="code" id="qr"></div>
-    <div class="t1">SCAN &amp; VOTE</div>
-    <div class="t2">휴대폰 카메라로 스캔해서 투표하세요</div>
-    <div class="u" id="url"></div>
-  </div>
-
   <div class="band"><div class="track" id="track"></div></div>
 </div>
 
@@ -152,13 +133,6 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// QR: 외부 서비스 없이 브라우저에서 직접 그림
-const voteUrl = location.origin + '/';
-$('url').textContent = voteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-try {
-  const q = qrcode(0, 'M'); q.addData(voteUrl); q.make();
-  $('qr').innerHTML = q.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
-} catch (e) { $('qr').textContent = voteUrl; }
 
 // 장식
 (function () {
@@ -252,13 +226,13 @@ function render(S) {
     html = `<h1 class="idle-brand"><span>Feel</span><span>So</span><span>Good</span></h1>
       <div class="idle-sub">: The generation . . .</div>
       <div class="idle-when">${esc(S.eventTitle)} · 11/26 THU 학생회관 소극장 19:00</div>
-      <div class="call">무대가 끝날 때마다 투표가 열려요. QR을 미리 스캔해 두세요!</div>`;
+      <div class="call">무대가 끝날 때마다 투표가 열려요</div>`;
   } else {
     const st = S.phase === 'performing' ? ['live', 'NOW ON STAGE'] : S.phase === 'voting' ? ['open', S.closing ? 'LAST CALL' : 'VOTE OPEN'] : ['', 'VOTE CLOSED'];
     const call = S.phase === 'voting' && S.closing
-      ? `<div class="call open"><span class="fsg" aria-hidden="true"></span> 투표 마감까지 <b class="cdbig" data-cd>${secsLeft()}</b>초! 지금 투표하세요</div>`
+      ? `<div class="call open"><span class="fsg" aria-hidden="true"></span> 투표 마감까지 <b class="cdbig" data-cd>${secsLeft()}</b>초!</div>`
       : S.phase === 'voting'
-      ? '<div class="call open"><span class="fsg" aria-hidden="true"></span> 지금 투표하세요! 무대마다 두 번까지 FEEL SO GOOD</div>'
+      ? '<div class="call open"><span class="fsg" aria-hidden="true"></span> 투표 OPEN · 무대마다 두 번까지 FEEL SO GOOD</div>'
       : S.phase === 'performing' ? '<div class="call">무대가 끝나면 투표가 열려요</div>'
       : '<div class="call">투표가 마감됐어요 · 다음 무대를 기다려 주세요</div>';
     html = `<span class="status ${st[0]}"><span class="dot"></span>${st[1]}</span>
