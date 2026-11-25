@@ -196,6 +196,16 @@
   .foot { text-align: center; margin-top: 26px; font-size: 12px; color: var(--muted); line-height: 1.7; }
   .foot b { font-family: var(--display); font-weight: 400; color: var(--lav-2); letter-spacing: 0.08em; }
 
+  /* 마감 카운트다운: 로고 위 숫자 */
+  .logo-box { position: relative; display: block; width: 70px; height: 70px; margin: 0 auto 4px; }
+  .vote.again .logo-box { width: 80px; height: 80px; }
+  .logo-box .logo { width: 100% !important; height: 100% !important; margin: 0 !important; opacity: 0.25; }
+  .logo-box .cd { position: absolute; inset: -6px; display: grid; place-items: center; font-family: var(--display); font-size: 58px; line-height: 1;
+    color: currentColor; text-shadow: 0 0 12px rgba(255,255,255,0.85); }
+  .cd.tick, .cdtxt.tick { animation: tick 0.35s ease-out; }
+  @keyframes tick { from { transform: scale(1.35); } }
+  .hint.closing { color: var(--lime); font-weight: 800; font-size: 15px; }
+  .hint.closing b { display: inline-block; font-size: 18px; margin: 0 1px; }
   /* 투표 확인 창 */
   .ask { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center; padding: 24px;
     background: rgba(12, 14, 50, 0.72); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
@@ -344,6 +354,23 @@ function netFail() { NET.fails++; if (!NET.down && (NET.fails >= 2 || !navigator
 window.addEventListener('offline', () => { NET.down = true; showNet(true); });
 window.addEventListener('online', () => load());
 
+// ---------- 마감 카운트다운 ----------
+// 서버가 알려준 남은 시간으로 이 기기의 마감 시각을 계산하고, 0.2초마다 [data-cd] 숫자를 갱신
+let deadline = null, cdReload = false;
+function syncDeadline(st) {
+  if (st && st.closing && st.closeIn != null) { const d = Date.now() + st.closeIn; if (!deadline || Math.abs(d - deadline) > 800) deadline = d; }
+  else deadline = null;
+}
+function secsLeft() { return deadline ? Math.max(0, Math.ceil((deadline - Date.now()) / 1000)) : ''; }
+setInterval(() => {
+  if (!deadline) return;
+  const n = String(secsLeft());
+  document.querySelectorAll('[data-cd]').forEach((e) => {
+    if (e.textContent !== n) { e.textContent = n; e.classList.remove('tick'); void e.offsetWidth; e.classList.add('tick'); }
+  });
+  if (n === '0' && !cdReload) { cdReload = true; setTimeout(() => { cdReload = false; load(); }, 500); }
+}, 200);
+
 let lastKey = '';
 async function load() {
   try {
@@ -351,8 +378,9 @@ async function load() {
     S = await r.json();
     netOk();
     syncEpoch(S.epoch);
+    syncDeadline(S);
     // 바뀐 게 있을 때만 다시 그려서 버튼 누르는 순간 화면이 교체되지 않게 함
-    const key = JSON.stringify([S, localCounts()]);
+    const key = JSON.stringify([{ ...S, closeIn: null }, localCounts()]);
     if (key !== lastKey) { lastKey = key; render(); }
   } catch { netFail(); }
 }
@@ -381,7 +409,7 @@ function render() {
       <button class="vote wait" disabled><span class="logo" aria-hidden="true"></span>MIC CHECK</button>
       <div class="hint">화면을 켜 둔 채로 기다려 주세요</div>`;
   } else {
-    const st = S.phase === 'performing' ? ['live', 'LIVE NOW'] : S.phase === 'voting' ? ['open', 'VOTE OPEN'] : ['', 'VOTE CLOSED'];
+    const st = S.phase === 'performing' ? ['live', 'LIVE NOW'] : S.phase === 'voting' ? ['open', S.closing ? 'LAST CALL' : 'VOTE OPEN'] : ['', 'VOTE CLOSED'];
     const head = `<span class="status ${st[0]}"><span class="dot"></span>${st[1]}</span>
       <div><span class="team team-${c.team}">${esc(S.teams[c.team])}</span></div>
       <div class="song-title">${esc(c.title)}</div>
@@ -406,6 +434,12 @@ function render() {
     } else {
       btn = `<button class="vote wait" disabled><span class="logo" aria-hidden="true"></span>CLOSED<small>투표 마감</small></button>
         <div class="hint">다음 무대를 기다려 주세요</div>`;
+    }
+    if (S.phase === 'voting' && S.closing) {
+      // 마감 10초 카운트다운: 로고 위에 숫자, 안내 문구도 카운트다운으로
+      btn = btn.replace('<span class="logo" aria-hidden="true"></span>',
+        `<span class="logo-box"><span class="logo" aria-hidden="true"></span><span class="cd" data-cd>${secsLeft()}</span></span>`)
+        .replace(/<div class="hint">[^<]*<\/div>/, `<div class="hint closing">투표 마감까지 <b class="cdtxt" data-cd>${secsLeft()}</b>초!</div>`);
     }
     now.innerHTML = head + btn;
     const vb = $('voteBtn');

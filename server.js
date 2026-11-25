@@ -9,6 +9,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin1234';
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const VOTES_PER_SONG = 2; // 한 기기가 한 무대에 투표할 수 있는 횟수
+const CLOSE_COUNTDOWN_MS = 10000; // [마감]을 누른 뒤 실제로 닫힐 때까지 시간
 
 if (!process.env.ADMIN_PASSWORD) {
   console.warn('[경고] ADMIN_PASSWORD 환경변수가 없어 기본 비밀번호(admin1234)를 사용합니다.');
@@ -35,6 +36,7 @@ function defaultState() {
     ],
     currentSongId: null,
     phase: 'idle', // idle | performing | voting | closed
+    closingAt: null, // 마감 카운트다운 중이면 닫히는 시각(ms)
     showResults: false,
     votes: {}, // songId -> { deviceId: 투표 횟수(1~VOTES_PER_SONG) }
     epoch: crypto.randomBytes(6).toString('hex'), // 초기화할 때마다 바뀌는 회차 값
@@ -49,6 +51,23 @@ try {
   state = defaultState();
 }
 if (!state.epoch) state.epoch = crypto.randomBytes(6).toString('hex');
+
+// ---------- 마감 카운트다운 ----------
+let closeTimer = null;
+function finishClose() {
+  clearTimeout(closeTimer); closeTimer = null;
+  if (state.closingAt && state.phase === 'voting') state.phase = 'closed';
+  state.closingAt = null;
+  save();
+}
+function scheduleClose(at) {
+  clearTimeout(closeTimer);
+  state.closingAt = at;
+  closeTimer = setTimeout(finishClose, Math.max(0, at - Date.now()));
+}
+function cancelClose() { clearTimeout(closeTimer); closeTimer = null; state.closingAt = null; }
+// 카운트다운이 끝났는지 매 요청마다도 확인 (타이머가 늦게 돌아도 정확하게)
+function tick() { if (state.closingAt && Date.now() >= state.closingAt) finishClose(); }
 
 let saveTimer = null;
 function save() {
@@ -92,6 +111,8 @@ function publicState(deviceId) {
     songs: songs.map(({ id, order, team, title, artist }) => ({ id, order, team, title, artist })),
     current,
     phase: state.phase,
+    closing: !!state.closingAt,
+    closeIn: state.closingAt ? Math.max(0, state.closingAt - Date.now()) : null,
     myVotes,
     myCounts,
     votesPerSong: VOTES_PER_SONG,
@@ -172,6 +193,7 @@ function serveStatic(req, res, pathname) {
 
 // ---------- 라우팅 ----------
 const server = http.createServer(async (req, res) => {
+  tick();
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
 
@@ -185,7 +207,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/vote' && req.method === 'POST') {
       const deviceId = getDeviceId(req, res);
       const body = await readBody(req);
-      if (state.phase !== 'voting' || body.songId !== state.currentSongId) {
+      if (state.phase !== 'voting' || body.songId !== state.currentSongId || (state.closingAt && Date.now() >= state.closingAt)) {
         return sendJSON(res, 409, { error: '지금은 이 무대의 투표 시간이 아니에요.' });
       }
       const box = (state.votes[body.songId] = state.votes[body.songId] || {});
@@ -240,6 +262,7 @@ const server = http.createServer(async (req, res) => {
         const ids = new Set(state.songs.map((s) => s.id));
         Object.keys(state.votes).forEach((k) => !ids.has(k) && delete state.votes[k]);
         if (!ids.has(state.currentSongId)) {
+          cancelClose();
           state.currentSongId = null;
           state.phase = 'idle';
         }
@@ -251,14 +274,23 @@ const server = http.createServer(async (req, res) => {
         const { action, songId } = body;
         const exists = state.songs.some((s) => s.id === songId);
         if (action === 'perform' && exists) {
+          cancelClose();
           state.currentSongId = songId;
           state.phase = 'performing';
         } else if (action === 'open' && exists) {
+          cancelClose();
           state.currentSongId = songId;
           state.phase = 'voting';
         } else if (action === 'close') {
-          if (state.currentSongId) state.phase = 'closed';
+          // 10초 카운트다운 후 마감 (이미 카운트다운 중이면 그대로 둠)
+          if (state.currentSongId && state.phase === 'voting' && !state.closingAt) scheduleClose(Date.now() + CLOSE_COUNTDOWN_MS);
+        } else if (action === 'closeNow') {
+          cancelClose();
+          if (state.currentSongId && state.phase === 'voting') state.phase = 'closed';
+        } else if (action === 'cancelClose') {
+          cancelClose();
         } else if (action === 'idle') {
+          cancelClose();
           state.currentSongId = null;
           state.phase = 'idle';
         } else if (action === 'showResults') {
@@ -271,6 +303,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (p === '/api/admin/reset') {
+        cancelClose();
         state.votes = {};
         state.epoch = crypto.randomBytes(6).toString('hex');
         state.currentSongId = null;
@@ -310,5 +343,8 @@ function flushAndExit() {
 }
 process.on('SIGTERM', flushAndExit);
 process.on('SIGINT', flushAndExit);
+
+// 재시작 전에 카운트다운 중이었다면 이어서 처리
+if (state.closingAt) { if (state.phase === 'voting') scheduleClose(state.closingAt); else state.closingAt = null; }
 
 server.listen(PORT, () => console.log(`투표 서버 실행 중: http://localhost:${PORT}`));

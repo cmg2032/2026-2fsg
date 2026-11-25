@@ -99,6 +99,9 @@
   .net.show { transform: translateY(0); }
   .net .spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .cdbig { display: inline-block; margin: 0 0.12em; text-align: center; font-family: var(--display); font-size: 1.5em; line-height: 1; vertical-align: -0.12em; }
+  .cdbig.tick { animation: tick 0.35s ease-out; }
+  @keyframes tick { from { transform: scale(1.4); } }
   /* QR */
   .qr { align-self: center; background: var(--glass); border: 0.1vw solid var(--line); padding: 1.6vw; text-align: center; position: relative;
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
@@ -191,13 +194,31 @@ function netFail() { NET.fails++; if (!NET.down && (NET.fails >= 2 || !navigator
 window.addEventListener('offline', () => { NET.down = true; showNet(true); });
 window.addEventListener('online', () => load());
 
+// ---------- 마감 카운트다운 ----------
+// 서버가 알려준 남은 시간으로 이 기기의 마감 시각을 계산하고, 0.2초마다 [data-cd] 숫자를 갱신
+let deadline = null, cdReload = false;
+function syncDeadline(st) {
+  if (st && st.closing && st.closeIn != null) { const d = Date.now() + st.closeIn; if (!deadline || Math.abs(d - deadline) > 800) deadline = d; }
+  else deadline = null;
+}
+function secsLeft() { return deadline ? Math.max(0, Math.ceil((deadline - Date.now()) / 1000)) : ''; }
+setInterval(() => {
+  if (!deadline) return;
+  const n = String(secsLeft());
+  document.querySelectorAll('[data-cd]').forEach((e) => {
+    if (e.textContent !== n) { e.textContent = n; e.classList.remove('tick'); void e.offsetWidth; e.classList.add('tick'); }
+  });
+  if (n === '0' && !cdReload) { cdReload = true; setTimeout(() => { cdReload = false; load(); }, 500); }
+}, 200);
+
 const pad = (n) => String(n).padStart(2, '0');
 let lastKey = '';
 
 async function load() {
   let S;
   try { S = await (await fetchT('/api/state', { cache: 'no-store' })).json(); netOk(); } catch { netFail(); return; }
-  const key = JSON.stringify([S.current, S.phase, S.showResults, S.results, S.teams, S.eventTitle]);
+  syncDeadline(S);
+  const key = JSON.stringify([S.current, S.phase, S.closing, S.showResults, S.results, S.teams, S.eventTitle]);
   if (key === lastKey) return;
   lastKey = key;
   render(S);
@@ -233,8 +254,10 @@ function render(S) {
       <div class="idle-when">${esc(S.eventTitle)} · 11/26 THU 학생회관 소극장 19:00</div>
       <div class="call">무대가 끝날 때마다 투표가 열려요. QR을 미리 스캔해 두세요!</div>`;
   } else {
-    const st = S.phase === 'performing' ? ['live', 'NOW ON STAGE'] : S.phase === 'voting' ? ['open', 'VOTE OPEN'] : ['', 'VOTE CLOSED'];
-    const call = S.phase === 'voting'
+    const st = S.phase === 'performing' ? ['live', 'NOW ON STAGE'] : S.phase === 'voting' ? ['open', S.closing ? 'LAST CALL' : 'VOTE OPEN'] : ['', 'VOTE CLOSED'];
+    const call = S.phase === 'voting' && S.closing
+      ? `<div class="call open"><span class="fsg" aria-hidden="true"></span> 투표 마감까지 <b class="cdbig" data-cd>${secsLeft()}</b>초! 지금 투표하세요</div>`
+      : S.phase === 'voting'
       ? '<div class="call open"><span class="fsg" aria-hidden="true"></span> 지금 투표하세요! 무대마다 두 번까지 FEEL SO GOOD</div>'
       : S.phase === 'performing' ? '<div class="call">무대가 끝나면 투표가 열려요</div>'
       : '<div class="call">투표가 마감됐어요 · 다음 무대를 기다려 주세요</div>';

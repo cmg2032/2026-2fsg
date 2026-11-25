@@ -261,11 +261,29 @@ $('loginForm').onsubmit = async (e) => {
   start();
 };
 
+// ---------- 마감 카운트다운 ----------
+// 서버가 알려준 남은 시간으로 이 기기의 마감 시각을 계산하고, 0.2초마다 [data-cd] 숫자를 갱신
+let deadline = null, cdReload = false;
+function syncDeadline(st) {
+  if (st && st.closing && st.closeIn != null) { const d = Date.now() + st.closeIn; if (!deadline || Math.abs(d - deadline) > 800) deadline = d; }
+  else deadline = null;
+}
+function secsLeft() { return deadline ? Math.max(0, Math.ceil((deadline - Date.now()) / 1000)) : ''; }
+setInterval(() => {
+  if (!deadline) return;
+  const n = String(secsLeft());
+  document.querySelectorAll('[data-cd]').forEach((e) => {
+    if (e.textContent !== n) { e.textContent = n; e.classList.remove('tick'); void e.offsetWidth; e.classList.add('tick'); }
+  });
+  if (n === '0' && !cdReload) { cdReload = true; setTimeout(() => { cdReload = false; load(); }, 500); }
+}, 200);
+
 let lastKey = '';
 async function load(first) {
   let next;
   try { next = await api('state'); netOk(); } catch (e) { if (e.message !== 'auth') netFail(); return; }
-  const key = JSON.stringify(next);
+  syncDeadline(next);
+  const key = JSON.stringify({ ...next, closeIn: null });
   S = next;
   // 내용이 바뀌었을 때만 다시 그려서, 버튼을 누르는 순간 화면이 교체돼 클릭이 씹히는 일을 막음
   if (first || key !== lastKey) { lastKey = key; renderLive(); }
@@ -277,7 +295,9 @@ const PHASE = { idle: '대기 중', performing: '공연 중', voting: '투표 �
 function renderLive() {
   const cur = S.songs.find((s) => S.current && s.id === S.current.id);
   $('dot').className = 'dot ' + S.phase;
-  $('statusText').textContent = cur ? `${PHASE[S.phase]} · ${cur.order}. ${cur.title}` : '대기 중';
+  $('statusText').innerHTML = !cur ? '대기 중'
+    : S.phase === 'voting' && S.closing ? `마감 카운트다운 <b class="cdtxt" data-cd style="color:var(--lime)">${secsLeft()}</b>초 · ${cur.order}. ${esc(cur.title)}`
+    : `${PHASE[S.phase]} · ${cur.order}. ${esc(cur.title)}`;
   $('statusSub').innerHTML = cur ? [esc(S.teams[cur.team]), esc(cur.artist), `현재 <span class="fsg" aria-hidden="true"></span> ${cur.votes}표`].filter(Boolean).join(' · ') : '아래 목록에서 첫 곡의 [공연 시작]을 누르면 시작돼요.';
 
   // 빠른 진행 버튼: 현재 상태에서 자연스러운 다음 동작
@@ -286,7 +306,8 @@ function renderLive() {
   const idx = cur ? S.songs.indexOf(cur) : -1;
   const next = S.songs[idx + 1];
   if (cur && S.phase === 'performing') btns.push(['투표 열기', 'open', cur.id, true]);
-  if (cur && S.phase === 'voting') btns.push(['투표 마감', 'close', cur.id, true]);
+  if (cur && S.phase === 'voting' && !S.closing) btns.push(['투표 마감 (10초 후 닫힘)', 'close', cur.id, true]);
+  if (cur && S.phase === 'voting' && S.closing) { btns.push(['지금 바로 마감', 'closeNow', cur.id, true]); btns.push(['마감 취소', 'cancelClose', cur.id, false]); }
   if ((!cur || S.phase === 'closed') && (next || !cur)) {
     const n = cur ? next : S.songs[0];
     if (n) btns.push([`다음 곡 공연 시작 → ${n.order}. ${n.title}`, 'perform', n.id, true]);
@@ -327,7 +348,7 @@ function renderLive() {
         <span class="count"><span class="fsg" aria-hidden="true"></span> ${s.votes}</span>
         <button class="btn" data-a="perform" data-id="${s.id}" ${ph === 'performing' ? 'disabled' : ''}>공연 시작</button>
         <button class="btn ${ph === 'performing' ? 'btn-primary' : ''}" data-a="open" data-id="${s.id}" ${ph === 'voting' ? 'disabled' : ''}>${ph === 'closed' ? '투표 재개' : '투표 열기'}</button>
-        <button class="btn ${ph === 'voting' ? 'btn-primary' : ''}" data-a="close" data-id="${s.id}" ${ph !== 'voting' ? 'disabled' : ''}>마감</button>
+        <button class="btn ${ph === 'voting' ? 'btn-primary' : ''}" data-a="close" data-id="${s.id}" ${ph !== 'voting' || S.closing ? 'disabled' : ''}>${ph === 'voting' && S.closing ? `마감 중 <span data-cd>${secsLeft()}</span>` : '마감'}</button>
       </div>
     </div>`;
   }).join('');
