@@ -140,7 +140,7 @@ function parseCookies(req) {
   const out = {};
   (req.headers.cookie || '').split(';').forEach((p) => {
     const i = p.indexOf('=');
-    if (i > -1) out[p.slice(0, i).trim()] = decodeURIComponent(p.slice(i + 1).trim());
+    if (i > -1) { const v = p.slice(i + 1).trim(); try { out[p.slice(0, i).trim()] = decodeURIComponent(v); } catch { out[p.slice(0, i).trim()] = v; } }
   });
   return out;
 }
@@ -182,7 +182,7 @@ function serveStatic(req, res, pathname) {
   const routes = { '/': 'index.html', '/admin': 'admin.html', '/screen': 'screen.html' };
   const file = routes[pathname] || pathname.slice(1);
   const full = path.join(PUBLIC_DIR, file);
-  if (!full.startsWith(PUBLIC_DIR)) return sendJSON(res, 403, { error: 'forbidden' });
+  if (!full.startsWith(PUBLIC_DIR + path.sep)) return sendJSON(res, 403, { error: 'forbidden' });
   fs.readFile(full, (err, data) => {
     if (err) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -195,11 +195,10 @@ function serveStatic(req, res, pathname) {
 
 // ---------- 라우팅 ----------
 const server = http.createServer(async (req, res) => {
-  tick();
-  const url = new URL(req.url, 'http://x');
-  const p = url.pathname;
-
+  let p;
   try {
+    tick();
+    p = new URL(req.url, 'http://x').pathname;
     // 관객 API
     if (p === '/api/state' && req.method === 'GET') {
       const deviceId = getDeviceId(req, res);
@@ -332,6 +331,39 @@ const server = http.createServer(async (req, res) => {
         return sendJSON(res, 200, { ok: true });
       }
 
+      // 전체 상태 백업 (운영 콘솔이 자동으로 받아 브라우저에 보관)
+      if (p === '/api/admin/backup') {
+        return sendJSON(res, 200, { ...state, savedAt: Date.now() });
+      }
+
+      // 백업으로 복원 (서버 재시작으로 기록이 사라졌을 때)
+      if (p === '/api/admin/restore') {
+        const b = body && body.state;
+        if (!b || !Array.isArray(b.songs) || !b.songs.length || typeof b.votes !== 'object' || !b.votes) {
+          return sendJSON(res, 400, { error: '백업 파일이 올바르지 않아요.' });
+        }
+        cancelClose();
+        state = {
+          ...defaultState(),
+          eventTitle: String(b.eventTitle || state.eventTitle),
+          eventInfo: String(b.eventInfo || ''),
+          teams: { A: String((b.teams && b.teams.A) || 'A'), B: String((b.teams && b.teams.B) || 'B') },
+          songs: b.songs.map((x, i) => ({ id: String(x.id), order: i + 1, team: x.team === 'B' ? 'B' : 'A', title: String(x.title || ''), artist: String(x.artist || '') })),
+          votes: b.votes,
+          epoch: String(b.epoch || state.epoch),
+          currentSongId: b.currentSongId || null,
+          // 진행 중이던 곡은 투표 열림 상태로 되돌림 (카운트다운은 취소)
+          phase: ['idle', 'voting', 'closed'].includes(b.phase) ? b.phase : 'idle',
+          onStage: !!b.onStage,
+          closingAt: null,
+          showResults: !!b.showResults,
+        };
+        if (!state.songs.some((x) => x.id === state.currentSongId)) { state.currentSongId = null; state.phase = 'idle'; }
+        save();
+        console.log('[복원] 백업에서 복원됨', summary());
+        return sendJSON(res, 200, { ok: true });
+      }
+
       if (p === '/api/admin/export') {
         const r = results();
         const rows = [['순서', '팀', '곡', '공연자', '득표']].concat(
@@ -353,6 +385,15 @@ const server = http.createServer(async (req, res) => {
     sendJSON(res, 500, { error: '서버 오류' });
   }
 });
+
+// 30초마다 바뀐 게 있으면 곡별 득표를 로그에 한 줄로 남김
+function summary() { return results().songs.map((s) => `${s.order}.${s.title}=${s.votes}`).join(' | '); }
+let lastSummary = '';
+setInterval(() => { const t = summary(); if (t !== lastSummary) { lastSummary = t; console.log('[집계]', new Date().toISOString(), t); } }, 30000);
+
+// 예상 못 한 오류가 나도 서버가 꺼지지 않게 (꺼지면 무료 서버는 기록이 사라질 수 있음)
+process.on('uncaughtException', (e) => console.error('[오류]', e));
+process.on('unhandledRejection', (e) => console.error('[오류]', e));
 
 // 서버가 꺼질 때(재배포·재시작) 아직 저장 안 된 표를 바로 기록
 function flushAndExit() {
