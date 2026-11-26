@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex" />
 <title>Feel So Good · 대형 화면</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<script src="/qrcode.js"></script>
 <style>
   @font-face { font-family: 'Audiowide'; src: url('/fonts/audiowide.woff2') format('woff2'); font-display: swap; }
   :root {
@@ -97,6 +98,16 @@
   .cd.tick { animation: tick 0.35s ease-out; }
   @keyframes tick { from { transform: scale(1.4); } }
 
+  /* ---------- 투표 중 가운데 QR (운영 콘솔에서 켜고 끔) ---------- */
+  .qr { position: fixed; left: 50%; top: 55%; z-index: 3; transform: translate(-50%, -50%) scale(0.9); opacity: 0; pointer-events: none;
+    transition: opacity 0.5s, transform 0.5s; text-align: center; padding: 1.4vw 1.4vw 1.1vw; background: rgba(14, 16, 52, 0.82);
+    border: 0.25vw solid var(--team, var(--lime)); box-shadow: 0 0 3vw var(--team-glow, rgba(200,242,90,0.5)), 0 1.5vw 4vw rgba(0,0,0,0.5); }
+  body.qr-on[data-mode="voting"] .qr, body.qr-on[data-mode="closing"] .qr { opacity: 1; transform: translate(-50%, -50%); }
+  .qr .code { width: 19vw; height: 19vw; background: #fff; padding: 0.9vw; }
+  .qr .code svg { display: block; width: 100%; height: 100%; }
+  .qr .t1 { font-family: var(--display); font-size: 1.7vw; letter-spacing: 0.14em; margin-top: 0.9vw; color: var(--team, var(--lime)); }
+  .qr .t2 { font-size: 1vw; color: var(--muted); margin-top: 0.3vw; }
+
   /* ---------- 결과 TOP 5 ---------- */
   .result { position: fixed; left: 50%; top: 50%; z-index: 3; transform: translate(-50%, -50%) scale(0.96); opacity: 0; pointer-events: none;
     width: min(62vw, 1200px); padding: 2.2vw 2.6vw; background: rgba(18, 20, 62, 0.86); border: 0.1vw solid rgba(184,189,246,0.35);
@@ -144,6 +155,7 @@
 <div class="eq" id="eq" aria-hidden="true"></div>
 <header class="head" id="head"></header>
 <section class="result" id="result"></section>
+<div class="qr" aria-hidden="true"><div class="code" id="qrcode"></div><div class="t1">SCAN &amp; VOTE</div><div class="t2" id="qrurl"></div></div>
 
 <div class="net" id="net" role="status" aria-live="polite"><span class="spin"></span>연결이 끊겼어요 · 다시 연결하는 중…</div>
 
@@ -192,12 +204,20 @@ setInterval(() => {
   }
 })();
 
+// 투표 QR: 이 화면 주소의 첫 페이지(관객 화면)로 연결
+(function () {
+  const url = location.origin + '/';
+  $('qrurl').textContent = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  try { const q = qrcode(0, 'M'); q.addData(url); q.make(); $('qrcode').innerHTML = q.createSvgTag({ cellSize: 8, margin: 0, scalable: true }); }
+  catch (e) { $('qrcode').textContent = url; }
+})();
+
 let lastKey = '';
 async function load() {
   let S;
   try { S = await (await fetchT('/api/state', { cache: 'no-store' })).json(); netOk(); } catch { netFail(); return; }
   syncDeadline(S);
-  const key = JSON.stringify([S.current, S.phase, S.closing, S.onStage, S.showResults, S.results, S.teams]);
+  const key = JSON.stringify([S.current, S.phase, S.closing, S.onStage, S.showResults, S.showQR, S.results, S.teams]);
   if (key === lastKey) return;
   lastKey = key;
   render(S);
@@ -215,6 +235,7 @@ function render(S) {
   // 공연 중(onStage)엔 투표가 열려 있어도 화면은 NOW ON STAGE
   const mode = res ? 'results' : !active ? 'idle' : S.phase === 'voting' ? (S.closing ? 'closing' : S.onStage ? 'performing' : 'voting') : S.phase;
   document.body.dataset.mode = mode;
+  document.body.classList.toggle('qr-on', !!S.showQR);
   // 팀 차례: 결과 발표·대기 중에는 원래 포스터 색
   if (active && !res) document.body.dataset.team = c.team; else delete document.body.dataset.team;
 

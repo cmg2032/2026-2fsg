@@ -191,7 +191,10 @@
     <h2>RANKING <span class="ko">곡별 득표 순위 · 1인 무대당 최대 2표 <span id="devices"></span></span></h2>
     <div class="card" style="padding:6px 14px"><ol class="rank" id="ranking"></ol></div>
     <div class="row" style="margin-top:12px;justify-content:space-between;flex-wrap:wrap">
-      <label class="switch"><input type="checkbox" id="showResults" /> 관객 화면·대형 화면에 결과 공개</label>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label class="switch"><input type="checkbox" id="showResults" /> 관객 화면·대형 화면에 결과 공개</label>
+        <label class="switch"><input type="checkbox" id="showQR" /> 투표 중(VOTE OPEN) 대형 화면 가운데에 QR 표시</label>
+      </div>
       <button class="btn" id="exportBtn">결과 CSV 다운로드</button>
     </div>
 
@@ -375,6 +378,7 @@ function renderLive() {
   }).join('');
   $('devices').textContent = `· 참여 기기 ${S.totalDevices}대`;
   $('showResults').checked = S.showResults;
+  $('showQR').checked = !!S.showQR;
 
   const max = Math.max(1, ...S.songs.map((s) => s.votes));
   const curIdx = cur ? S.songs.indexOf(cur) : -1;
@@ -458,6 +462,11 @@ async function control(action, songId, value) {
 }
 
 $('showResults').onchange = (e) => control('showResults', null, e.target.checked);
+$('showQR').onchange = async (e) => {
+  try { await api('control', { action: 'showQR', value: e.target.checked }); toast(e.target.checked ? '투표 중 대형 화면에 QR을 띄워요' : 'QR을 숨겼어요'); }
+  catch { e.target.checked = !e.target.checked; }
+  load();
+};
 
 function renderSettings() {
   $('evTitle').value = S.eventTitle;

@@ -40,6 +40,7 @@ function defaultState() {
     onStage: false, // 공연 중 표시 (투표는 열려 있지만 화면엔 LIVE / NOW ON STAGE)
     done: [], // 공연이 끝난(투표 마감된) 곡 id — 관객 셋리스트에 이것만 보여줌
     showResults: false,
+    showQR: false, // 투표 중 대형 화면 가운데에 QR 표시
     votes: {}, // songId -> { deviceId: 투표 횟수(1~VOTES_PER_SONG) }
     epoch: crypto.randomBytes(6).toString('hex'), // 초기화할 때마다 바뀌는 회차 값
     updatedAt: Date.now(),
@@ -123,6 +124,7 @@ function publicState(deviceId) {
     myCounts,
     votesPerSong: VOTES_PER_SONG,
     showResults: state.showResults,
+    showQR: !!state.showQR,
     epoch: state.epoch,
     done: state.done.filter((id) => !(id === state.currentSongId && state.phase === 'voting')),
   };
@@ -322,6 +324,8 @@ const server = http.createServer(async (req, res) => {
           state.songs = out;
         } else if (action === 'showResults') {
           state.showResults = !!body.value;
+        } else if (action === 'showQR') {
+          state.showQR = !!body.value;
         } else {
           return sendJSON(res, 400, { error: '알 수 없는 동작' });
         }
@@ -367,6 +371,7 @@ const server = http.createServer(async (req, res) => {
           onStage: !!b.onStage,
           closingAt: null,
           showResults: !!b.showResults,
+          showQR: !!b.showQR,
           done: Array.isArray(b.done) ? b.done.map(String) : [],
         };
         if (!state.songs.some((x) => x.id === state.currentSongId)) { state.currentSongId = null; state.phase = 'idle'; }
