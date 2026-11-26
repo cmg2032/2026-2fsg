@@ -181,7 +181,12 @@ async function load() {
   render(S);
 }
 
+// 투표 마감 후 5초 뒤 원래 배경으로
+let backTimer = null;
+const BACK_AFTER_MS = 5000;
+
 function render(S) {
+  clearTimeout(backTimer);
   const c = S.current;
   const res = S.showResults && S.results;
   const active = c && S.phase !== 'idle';
@@ -200,6 +205,10 @@ function render(S) {
       <div class="title">${esc(c.title)}</div>
       <div class="artist">${esc(c.artist)}</div>
       <div class="note">${note}</div>`;
+  }
+
+  if (mode === 'closed') {
+    backTimer = setTimeout(() => { document.body.dataset.mode = 'idle'; delete document.body.dataset.team; }, BACK_AFTER_MS);
   }
 
   if (res) {
