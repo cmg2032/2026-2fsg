@@ -8,198 +8,112 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 <style>
   @font-face { font-family: 'Audiowide'; src: url('/fonts/audiowide.woff2') format('woff2'); font-display: swap; }
-  @font-face { font-family: 'Share Tech Mono'; src: url('/fonts/sharetechmono.woff2') format('woff2'); font-display: swap; }
   :root {
-    --indigo: #262a78; --lav: #b8bdf6; --lav-2: #dfe2ff; --lime: #c8f25a; --teal: #3cc7b4;
-    --ink: #f3f4ff; --muted: #a9addf; --glass: rgba(34, 37, 110, 0.62); --line: rgba(184, 189, 246, 0.3);
-    --display: 'Audiowide', 'Pretendard', sans-serif; --mono: 'Share Tech Mono', ui-monospace, monospace;
+    --ink: #f3f4ff; --muted: #c3c6f0; --lime: #c8f25a; --lav: #b8bdf6; --navy: #1d2160;
+    /* 팀 색: OB = 라임·초록, YB = 보라 */
+    --ob: #c8f25a; --ob-deep: #3fae4a;
+    --yb: #c39bff; --yb-deep: #7a3cff;
+    --team: transparent; --team-deep: transparent;
+    --display: 'Audiowide', 'Pretendard', sans-serif;
   }
   * { box-sizing: border-box; }
-  html { background: var(--indigo); }
+  html { background: #1d2160; }
   html, body { margin: 0; height: 100%; overflow: hidden; color: var(--ink);
     font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; -webkit-font-smoothing: antialiased; }
+  body[data-team="A"] { --team: var(--ob); --team-deep: var(--ob-deep); }
+  body[data-team="B"] { --team: var(--yb); --team-deep: var(--yb-deep); }
 
-  .bg { position: fixed; inset: 0; z-index: -3;
-    background: linear-gradient(100deg, rgba(30, 33, 100, 0.92) 0%, rgba(38, 42, 120, 0.7) 55%, rgba(38, 42, 120, 0.55) 100%),
-                url('/bg.jpg') center / cover no-repeat; }
-  .scan { position: fixed; inset: 0; z-index: -1; pointer-events: none; mix-blend-mode: overlay;
-    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 3px); }
-  .glyphs { position: fixed; top: 0; bottom: 0; left: 0; width: 36vw; z-index: -2; overflow: hidden;
-    font-family: var(--mono); font-size: 0.85vw; line-height: 1.6; letter-spacing: 0.4em; white-space: pre;
-    color: var(--lav-2); opacity: 0.18; padding: 0.6vw 0 0 0.8vw;
-    -webkit-mask-image: linear-gradient(90deg, #000 30%, transparent); mask-image: linear-gradient(90deg, #000 30%, transparent); }
+  /* ---------- 배경: 포스터 이미지 + 팀 색 입히기 ---------- */
+  .bg { position: fixed; inset: 0; background: url('/screen-bg.jpg') center / cover no-repeat; z-index: -4; }
+  /* 팀 차례일 때 화면 전체 색감을 팀 색으로 */
+  .tint { position: fixed; inset: 0; z-index: -3; background: var(--team-deep); mix-blend-mode: color; opacity: 0; transition: opacity 0.8s, background 0.8s; }
+  .tint2 { position: fixed; inset: 0; z-index: -2; opacity: 0; transition: opacity 0.8s;
+    background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--team) 35%, transparent), transparent 60%),
+                linear-gradient(0deg, color-mix(in srgb, var(--team-deep) 30%, transparent), transparent 40%); }
+  body[data-team] .tint { opacity: 0.55; }
+  body[data-team] .tint2 { opacity: 1; }
+  /* 팀 색 테두리 */
+  .frame { position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0; transition: opacity 0.6s;
+    box-shadow: inset 0 0 0 0.55vw var(--team), inset 0 0 3vw color-mix(in srgb, var(--team) 60%, transparent); }
+  body[data-team] .frame { opacity: 1; }
+  body[data-mode="voting"] .frame, body[data-mode="closing"] .frame { animation: glow 1.2s ease-in-out infinite; }
+  body[data-mode="closing"] .frame { animation-duration: 0.5s; }
+  @keyframes glow { 50% { box-shadow: inset 0 0 0 0.8vw var(--team), inset 0 0 5vw var(--team); } }
 
-  .stage { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 38vw; grid-template-rows: auto 1fr auto; column-gap: 3vw; padding: 3.2vw 4vw 0; }
-
-  /* 상단 */
-  .top { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: flex-start; font-size: 1.1vw; color: var(--muted); letter-spacing: 0.04em; }
-  .top b { color: var(--ink); }
-  .brand { font-family: var(--display); font-size: 3.4vw; line-height: 1; color: var(--ink); margin: 0.3vw 0 0;
-    text-shadow: 0.15vw 0.15vw 0 var(--lav), 0 0 1.6vw rgba(184,189,246,0.35); }
-  .brand + div { margin-top: 0.6vw; font-size: 1.2vw; color: var(--lav-2); }
-  /* ---------- 턴테이블: 회전하는 LP + 원형 이퀄라이저 ---------- */
-  .top { grid-row: 1; }
-  .main { grid-column: 1; grid-row: 2; }
-  .band { grid-row: 3; }
-  .deck { grid-column: 2; grid-row: 2; align-self: center; justify-self: center; position: relative; width: 38vw; height: 38vw; }
-  .deck .glow { position: absolute; inset: 14%; border-radius: 50%; background: radial-gradient(circle, rgba(184,189,246,0.35), transparent 70%); filter: blur(2vw); transition: background 0.6s; }
-  .ring { position: absolute; inset: 0; }
-  .ring i { position: absolute; left: 50%; bottom: 50%; width: 0.55vw; height: 5.2vw; margin-left: -0.275vw; transform-origin: 50% 100%; }
-  .ring i b { display: block; width: 100%; height: 100%; border-radius: 0.3vw; transform-origin: 50% 100%;
-    background: linear-gradient(0deg, var(--lav), var(--lav-2)); animation: bar 0.9s ease-in-out infinite alternate; }
-  @keyframes bar { 0% { transform: scaleY(0.12); } 60% { transform: scaleY(0.55); } 100% { transform: scaleY(1); } }
-  .vinyl { position: absolute; inset: 21%; border-radius: 50%; animation: spin 3.6s linear infinite;
-    background:
-      radial-gradient(circle, transparent 0 31%, rgba(0,0,0,0) 31%),
-      repeating-radial-gradient(circle, #141633 0 0.18vw, #1d2050 0.18vw 0.36vw);
-    box-shadow: 0 0 0 0.35vw #0f1130, 0 1.6vw 4vw rgba(0,0,0,0.55), inset 0 0 2vw rgba(0,0,0,0.6); }
-  .vinyl::before { content: ''; position: absolute; inset: 0; border-radius: 50%;
-    background: conic-gradient(from 20deg, transparent 0 12%, rgba(255,255,255,0.16) 16%, transparent 22% 58%, rgba(255,255,255,0.12) 64%, transparent 70%); }
-  .vinyl .label { position: absolute; inset: 31%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #e6ff9e, var(--lime) 60%, #8fd13a);
-    display: grid; place-items: center; box-shadow: inset 0 0 0 0.25vw rgba(29,33,96,0.25); }
-  .vinyl .label .fsg-big { width: 52%; height: 62%; background: #1d2160;
-    -webkit-mask: url('/fsg-logo.png') center / contain no-repeat; mask: url('/fsg-logo.png') center / contain no-repeat; }
-  .vinyl .hole { position: absolute; left: 50%; top: 50%; width: 1vw; height: 1vw; margin: -0.5vw 0 0 -0.5vw; border-radius: 50%; background: #0f1130; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  /* 톤암 */
-  .arm { position: absolute; right: 3%; top: 6%; width: 22%; height: 52%; transform-origin: 78% 10%; transform: rotate(18deg); transition: transform 0.8s; }
-  .arm .base { position: absolute; right: 8%; top: 0; width: 5vw; height: 5vw; border-radius: 50%; background: radial-gradient(circle, #cfd3ff, #6f75c9 60%, #3a3f9e); box-shadow: 0 0.6vw 1.4vw rgba(0,0,0,0.45); }
-  .arm .rod { position: absolute; right: calc(8% + 2.3vw); top: 2.5vw; width: 0.5vw; height: 82%; border-radius: 0.3vw; background: linear-gradient(90deg, #9aa0ee, #eef0ff, #9aa0ee); }
-  .arm .head { position: absolute; right: calc(8% + 1.6vw); bottom: 0; width: 1.9vw; height: 3vw; border-radius: 0.3vw; background: #eef0ff; transform: rotate(-24deg); box-shadow: 0 0.4vw 0.8vw rgba(0,0,0,0.4); }
-  /* 상태별: 대기 → 천천히, 공연 중 → 보통, 투표 중 → 빠르고 라임색, 마감 직전 → 더 빠르게 */
-  body[data-mode="idle"] .vinyl { animation-duration: 6s; }
-  body[data-mode="idle"] .arm { transform: rotate(0deg); }
-  body[data-mode="idle"] .ring i b { animation-duration: 1.6s; opacity: 0.55; }
-  body[data-mode="voting"] .ring i b, body[data-mode="closing"] .ring i b { background: linear-gradient(0deg, var(--teal), var(--lime)); }
-  body[data-mode="voting"] .vinyl { animation-duration: 2.2s; }
-  body[data-mode="closing"] .vinyl { animation-duration: 1.2s; }
-  body[data-mode="closing"] .ring i b { animation-duration: 0.45s !important; }
-  body[data-mode="voting"] .deck .glow, body[data-mode="closing"] .deck .glow { background: radial-gradient(circle, rgba(200,242,90,0.45), transparent 70%); }
-  body[data-mode="results"] .ring i b { background: linear-gradient(0deg, var(--lav), var(--lime)); }
-  @keyframes eq { 0% { height: 15%; } 100% { height: 100%; } }
-
-  /* 본문 */
-  .main { align-self: center; min-width: 0; }
-  .status { display: inline-flex; align-items: center; gap: 0.7vw; font-family: var(--display); font-size: 1.5vw; letter-spacing: 0.14em;
-    padding: 0.5vw 1.4vw; border: 0.12vw solid var(--line); border-radius: 999px; color: var(--lav-2); }
-  .status .dot { width: 0.8vw; height: 0.8vw; border-radius: 50%; background: var(--muted); }
-  .status.live .dot { background: #ff5f7e; animation: blink 1s infinite; }
-  .status.open { background: var(--lime); border-color: var(--lime); color: #1d2160; }
-  .status.open .dot { background: #1d2160; animation: blink 0.8s infinite; }
+  /* ---------- 위 가운데: 곡 정보 ---------- */
+  .head { position: fixed; left: 0; right: 0; top: 0; z-index: 2; text-align: center; padding: 2.2vw 6vw 3.6vw;
+    background: linear-gradient(180deg, rgba(14, 16, 52, 0.9) 0%, rgba(14, 16, 52, 0.7) 60%, transparent 100%);
+    transform: translateY(-110%); transition: transform 0.6s cubic-bezier(.2,.8,.2,1); }
+  body[data-mode="performing"] .head, body[data-mode="voting"] .head, body[data-mode="closing"] .head, body[data-mode="closed"] .head { transform: none; }
+  .meta { display: inline-flex; align-items: center; gap: 1.2vw; font-family: var(--display); letter-spacing: 0.16em; }
+  .teamtxt { font-size: 2.2vw; color: var(--team); text-shadow: 0 0 1.4vw color-mix(in srgb, var(--team) 70%, transparent); }
+  .sep { width: 0.35vw; height: 0.35vw; border-radius: 50%; background: var(--muted); opacity: 0.7; }
+  .status { font-size: 1.25vw; color: var(--muted); display: inline-flex; align-items: center; gap: 0.6vw; }
+  .status .dot { width: 0.75vw; height: 0.75vw; border-radius: 50%; background: var(--muted); }
+  body[data-mode="performing"] .status .dot { background: #ff5f7e; animation: blink 1s infinite; }
+  body[data-mode="voting"] .status, body[data-mode="closing"] .status { color: var(--team); }
+  body[data-mode="voting"] .status .dot, body[data-mode="closing"] .status .dot { background: var(--team); animation: blink 0.8s infinite; }
   @keyframes blink { 50% { opacity: 0.25; } }
-  .team { display: inline-block; font-size: 1.3vw; font-weight: 800; letter-spacing: 0.06em; padding: 0.25vw 0.9vw; border-radius: 0.2vw; color: #1d2160; }
-  .team-A { background: var(--lime); } .team-B { background: var(--lav); }
-  .title { font-size: 5.4vw; overflow-wrap: anywhere; font-weight: 900; line-height: 1.08; letter-spacing: -0.03em; margin: 1.6vw 0 0.6vw; word-break: keep-all;
-    text-shadow: -0.35vw 0 rgba(60,199,180,0.75), 0.35vw 0 rgba(200,242,90,0.5); }
-  .artist { font-size: 2.2vw; color: var(--lav-2); }
-  .call { margin-top: 2.4vw; font-size: 2vw; font-weight: 800; }
-  .call.open { display: inline-block; background: var(--lime); color: #1d2160; padding: 0.7vw 1.6vw; box-shadow: -0.3vw 0 0 var(--teal), 0.3vw 0 0 var(--lav); animation: nudge 1.4s ease-in-out infinite; }
-  @keyframes nudge { 50% { transform: translateX(0.4vw); } }
-
-  .idle-brand { font-family: var(--display); font-size: 8.6vw; line-height: 0.95; margin: 0;
-    text-shadow: 0.3vw 0.3vw 0 var(--lav), 0 0 2.6vw rgba(184,189,246,0.4); }
-  .idle-brand span { display: block; }
-  .idle-sub { font-family: var(--display); font-size: 1.9vw; color: var(--lav-2); margin-top: 1.6vw; }
-  .idle-when { font-size: 1.9vw; font-weight: 700; margin-top: 0.8vw; }
-
-  /* 결과: 곡별 득표 TOP 5 */
-  .rank { list-style: none; padding: 0; margin: 1.6vw 0 0; max-width: 100%; }
-  .rank li { display: grid; grid-template-columns: 4.4vw 1fr auto; align-items: center; gap: 1.2vw; padding: 0.8vw 1vw; border-bottom: 0.08vw solid var(--line); }
-  .rank .pos { font-size: 2.6vw; font-weight: 900; color: var(--muted); text-align: center; }
-  .rank li.podium .pos { color: var(--lime); font-size: 3.2vw; }
-  .rank li.top1 { background: linear-gradient(90deg, rgba(200,242,90,0.2), transparent); }
-  .rank .t { min-width: 0; }
-  .rank .t b { display: block; font-size: 2.2vw; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .rank .t small { font-size: 1.2vw; color: var(--muted); }
-  .rank .t .team { font-size: 0.95vw; padding: 0.1vw 0.5vw; margin-right: 0.5vw; vertical-align: 0.15vw; }
-  .rank .v { font-size: 2.4vw; font-weight: 900; }
-  .rank li.zero .t b, .rank li.zero .v { color: var(--muted); }
-  /* 공동 순위로 6~7줄이 되면 촘촘하게, 8줄 이상이면 두 줄로 */
-  .rank.many li { padding: 0.45vw 1vw; }
-  .rank.many .t b { font-size: 1.8vw; }
-  .rank.many .pos { font-size: 2.2vw; } .rank.many li.podium .pos { font-size: 2.6vw; }
-  .rank.many .v { font-size: 2vw; }
-  .rank.cols { max-width: none; display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: column; column-gap: 2vw; }
-  .rank.cols li { padding: 0.45vw 0.8vw; grid-template-columns: 3.2vw 1fr auto; }
-  .rank.cols .t b { font-size: 1.5vw; } .rank.cols .t small { font-size: 0.95vw; }
-  .rank.cols .pos { font-size: 1.9vw; } .rank.cols li.podium .pos { font-size: 2.2vw; } .rank.cols .v { font-size: 1.7vw; }
-
-  /* FSG 로고 아이콘 (글자색을 따라감) */
-  .fsg { display: inline-block; width: 0.95em; height: 1.3em; vertical-align: -0.3em; background: currentColor;
-    -webkit-mask: url('/fsg-logo.png') center / contain no-repeat; mask: url('/fsg-logo.png') center / contain no-repeat; }
-  /* 연결 끊김 표시 */
-  .net { position: fixed; right: 1.2vw; bottom: 4.4vw; left: auto; top: auto; transform: translateY(300%); z-index: 20;
-    display: flex; align-items: center; gap: 8px; white-space: nowrap;
-    background: #ff5f7e; color: #fff; font-weight: 800; font-size: 1vw; padding: 0.5vw 1vw; border-radius: 3px;
-    box-shadow: 0 6px 24px rgba(0,0,0,0.35); transition: transform 0.25s; }
-  .net.show { transform: translateY(0); }
-  .net .spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .cdbig { display: inline-block; margin: 0 0.12em; text-align: center; font-family: var(--display); font-size: 1.5em; line-height: 1; vertical-align: -0.12em; }
-  .cdbig.tick { animation: tick 0.35s ease-out; }
+  .title { font-size: 4.2vw; font-weight: 900; line-height: 1.15; letter-spacing: -0.02em; margin-top: 0.6vw; word-break: keep-all; overflow-wrap: anywhere;
+    text-shadow: 0 0.3vw 1.6vw rgba(0,0,0,0.5); }
+  .artist { font-size: 1.5vw; color: var(--muted); margin-top: 0.3vw; }
+  .note { margin-top: 1vw; font-size: 1.4vw; font-weight: 800; color: var(--muted); min-height: 1em; }
+  body[data-mode="closing"] .note { color: var(--team); font-size: 1.8vw; }
+  .cd { display: inline-block; font-family: var(--display); font-size: 2.8vw; margin: 0 0.3vw; vertical-align: -0.35vw; color: var(--team); text-shadow: 0 0 1.4vw var(--team); }
+  .cd.tick { animation: tick 0.35s ease-out; }
   @keyframes tick { from { transform: scale(1.4); } }
 
-  /* 하단 라임 띠 */
-  .band { grid-column: 1 / -1; margin: 0 -4vw; height: 3.4vw; overflow: hidden; position: relative;
-    background: linear-gradient(90deg, rgba(60,199,180,0.1), var(--lime) 15%, #b5ef4a 65%, rgba(60,199,180,0.9));
-    box-shadow: 0 -0.5vw 0 -0.2vw rgba(184,189,246,0.35); }
-  .band .track { position: absolute; top: 50%; white-space: nowrap; font-family: var(--display); font-size: 1.5vw; letter-spacing: 0.1em; color: #1d2160;
-    animation: marquee 30s linear infinite; }
-  @keyframes marquee { from { transform: translate(0, -50%); } to { transform: translate(-50%, -50%); } }
+  /* ---------- 결과 TOP 5 ---------- */
+  .result { position: fixed; left: 50%; top: 50%; z-index: 3; transform: translate(-50%, -50%) scale(0.96); opacity: 0; pointer-events: none;
+    width: min(62vw, 1200px); padding: 2.2vw 2.6vw; background: rgba(18, 20, 62, 0.86); border: 0.1vw solid rgba(184,189,246,0.35);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); transition: opacity 0.5s, transform 0.5s; }
+  body[data-mode="results"] .result { opacity: 1; transform: translate(-50%, -50%); }
+  .result::before, .result::after { content: ''; position: absolute; width: 1.6vw; height: 1.6vw; border: 0.22vw solid var(--lime); }
+  .result::before { top: -0.22vw; left: -0.22vw; border-right: 0; border-bottom: 0; }
+  .result::after { bottom: -0.22vw; right: -0.22vw; border-left: 0; border-top: 0; }
+  .result h2 { margin: 0 0 1vw; font-family: var(--display); font-weight: 400; font-size: 2vw; letter-spacing: 0.2em; color: var(--lime); text-align: center; }
+  .rank { list-style: none; margin: 0; padding: 0; }
+  .rank li { display: grid; grid-template-columns: 4vw 5vw 1fr auto; align-items: center; gap: 1vw; padding: 0.8vw 0.8vw; border-bottom: 0.08vw solid rgba(184,189,246,0.25); }
+  .rank li:last-child { border-bottom: 0; }
+  .rank .pos { font-size: 2.4vw; font-weight: 900; color: var(--muted); text-align: center; }
+  .rank li.podium .pos { color: var(--lime); font-size: 2.9vw; }
+  .rank li.top1 { background: linear-gradient(90deg, rgba(200,242,90,0.2), transparent); }
+  .rank .tm { font-family: var(--display); font-size: 1.3vw; letter-spacing: 0.1em; }
+  .rank .tm.A { color: var(--ob); } .rank .tm.B { color: var(--yb); }
+  .rank .t { min-width: 0; }
+  .rank .t b { display: block; font-size: 2vw; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank .t small { font-size: 1.05vw; color: var(--muted); }
+  .rank .v { font-size: 2.2vw; font-weight: 900; }
+  .rank.many li { padding: 0.45vw 0.8vw; } .rank.many .t b { font-size: 1.7vw; } .rank.many .pos { font-size: 2vw; }
+  .rank.cols { display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: column; column-gap: 2vw; }
+  .rank.cols li { grid-template-columns: 3vw 3.8vw 1fr auto; padding: 0.45vw 0.6vw; }
+  .rank.cols .t b { font-size: 1.4vw; } .rank.cols .pos { font-size: 1.8vw; } .rank.cols .v { font-size: 1.6vw; }
+  .fsg { display: inline-block; width: 0.95em; height: 1.3em; vertical-align: -0.3em; background: currentColor;
+    -webkit-mask: url('/fsg-logo.png') center / contain no-repeat; mask: url('/fsg-logo.png') center / contain no-repeat; }
+
+  /* 연결 끊김 표시 (오른쪽 아래 작게) */
+  .net { position: fixed; right: 1.2vw; bottom: 1.2vw; z-index: 20; display: flex; align-items: center; gap: 0.5vw;
+    background: #ff5f7e; color: #fff; font-weight: 800; font-size: 1vw; padding: 0.5vw 1vw; border-radius: 3px;
+    transform: translateY(300%); transition: transform 0.25s; }
+  .net.show { transform: none; }
+  .net .spin { width: 0.9vw; height: 0.9vw; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 <div class="bg"></div>
-<div class="glyphs" id="glyphs" aria-hidden="true"></div>
-<div class="scan" aria-hidden="true"></div>
+<div class="tint"></div>
+<div class="tint2"></div>
+<div class="frame"></div>
+
+<header class="head" id="head"></header>
+<section class="result" id="result"></section>
 
 <div class="net" id="net" role="status" aria-live="polite"><span class="spin"></span>연결이 끊겼어요 · 다시 연결하는 중…</div>
-<div class="stage">
-  <div class="top">
-    <div id="topLeft"></div>
-    <div>흑인음악동아리 <b>FEEL SO GOOD</b> · 한양대학교 ERICA</div>
-  </div>
-
-  <div class="main" id="main"></div>
-
-  <div class="deck" aria-hidden="true">
-    <div class="glow"></div>
-    <div class="ring" id="ring"></div>
-    <div class="vinyl"><div class="label"><div class="fsg-big"></div></div><div class="hole"></div></div>
-    <div class="arm"><div class="rod"></div><div class="base"></div><div class="head"></div></div>
-  </div>
-
-  <div class="band"><div class="track" id="track"></div></div>
-</div>
 
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-
-// 장식
-(function () {
-  // LP판 둘레 원형 이퀄라이저 (막대마다 길이·속도를 조금씩 다르게)
-  const ring = $('ring'), N = 56, R = 13.4; // R: LP 중심에서 막대까지 거리(vw)
-  for (let i = 0; i < N; i++) {
-    const el = document.createElement('i'), bar = document.createElement('b');
-    el.style.transform = `rotate(${(360 / N) * i}deg) translateY(-${R}vw)`;
-    el.style.height = (3 + Math.random() * 2.8).toFixed(2) + 'vw';
-    bar.style.animationDelay = (-Math.random() * 1.2).toFixed(2) + 's';
-    bar.style.animationDuration = (0.55 + Math.random() * 0.7).toFixed(2) + 's';
-    el.appendChild(bar); ring.appendChild(el);
-  }
-  $('track').textContent = 'ONE LAST TIME, THIS SEMESTER! ✦ FEEL SO GOOD ✦ 2026-2 FSG 정기공연 ✦ '.repeat(6);
-  const set = 'ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ<>∧∨⊐⊏ΞЭШZXNM_';
-  let out = '';
-  for (let r = 0; r < 60; r++) {
-    const len = 6 + Math.floor(Math.random() * 22);
-    let line = '';
-    for (let c = 0; c < len; c++) line += set[Math.floor(Math.random() * set.length)];
-    out += line + '\n';
-  }
-  $('glyphs').textContent = out;
-})();
 
 // ---------- 연결 상태 감시 ----------
 // 2번 연속 실패하거나 기기가 오프라인이 되면 '연결 끊김' 표시, 다시 성공하면 자동으로 숨김
@@ -209,13 +123,12 @@ async function fetchT(url, opts = {}, ms = 6000) {
   try { return await fetch(url, { ...opts, signal: c.signal }); } finally { clearTimeout(t); }
 }
 function showNet(on) { const n = document.getElementById('net'); if (n) n.classList.toggle('show', on); }
-function netOk() { NET.fails = 0; if (NET.down) { NET.down = false; showNet(false); if (typeof toast === 'function') toast('다시 연결됐어요'); } }
+function netOk() { NET.fails = 0; if (NET.down) { NET.down = false; showNet(false); } }
 function netFail() { NET.fails++; if (!NET.down && (NET.fails >= 2 || !navigator.onLine)) { NET.down = true; showNet(true); } }
 window.addEventListener('offline', () => { NET.down = true; showNet(true); });
 window.addEventListener('online', () => load());
 
 // ---------- 마감 카운트다운 ----------
-// 서버가 알려준 남은 시간으로 이 기기의 마감 시각을 계산하고, 0.2초마다 [data-cd] 숫자를 갱신
 let deadline = null, cdReload = false;
 function syncDeadline(st) {
   if (st && st.closing && st.closeIn != null) { const d = Date.now() + st.closeIn; if (!deadline || Math.abs(d - deadline) > 800) deadline = d; }
@@ -231,14 +144,12 @@ setInterval(() => {
   if (n === '0' && !cdReload) { cdReload = true; setTimeout(() => { cdReload = false; load(); }, 500); }
 }, 200);
 
-const pad = (n) => String(n).padStart(2, '0');
 let lastKey = '';
-
 async function load() {
   let S;
   try { S = await (await fetchT('/api/state', { cache: 'no-store' })).json(); netOk(); } catch { netFail(); return; }
   syncDeadline(S);
-  const key = JSON.stringify([S.current, S.phase, S.closing, S.showResults, S.results, S.teams, S.eventTitle]);
+  const key = JSON.stringify([S.current, S.phase, S.closing, S.showResults, S.results, S.teams]);
   if (key === lastKey) return;
   lastKey = key;
   render(S);
@@ -248,42 +159,37 @@ function render(S) {
   const c = S.current;
   const res = S.showResults && S.results;
   const active = c && S.phase !== 'idle';
-  $('topLeft').innerHTML = (active || res)
-    ? `<div class="brand">Feel So Good</div><div>${esc(S.eventTitle)}</div>`
-    : '';
-  document.body.dataset.mode = res ? 'results' : !active ? 'idle' : S.phase === 'voting' ? (S.closing ? 'closing' : 'voting') : S.phase;
+  const mode = res ? 'results' : !active ? 'idle' : S.phase === 'voting' ? (S.closing ? 'closing' : 'voting') : S.phase;
+  document.body.dataset.mode = mode;
+  // 팀 차례: 결과 발표·대기 중에는 원래 포스터 색
+  if (active && !res) document.body.dataset.team = c.team; else delete document.body.dataset.team;
 
-  let html = '';
+  if (active && !res) {
+    const status = { performing: 'NOW ON STAGE', voting: 'VOTE OPEN', closing: 'LAST CALL', closed: 'VOTE CLOSED' }[mode];
+    const note = mode === 'closing' ? `투표 마감까지 <b class="cd" data-cd>${secsLeft()}</b>초`
+      : mode === 'closed' ? '투표가 마감됐어요' : '';
+    $('head').innerHTML = `
+      <div class="meta"><span class="teamtxt">${esc(S.teams[c.team])}</span><span class="sep"></span><span class="status"><span class="dot"></span>${status}</span></div>
+      <div class="title">${esc(c.title)}</div>
+      <div class="artist">${esc(c.artist)}</div>
+      <div class="note">${note}</div>`;
+  }
+
   if (res) {
-    // 득표순 정렬, 동점은 같은 순위
+    // 득표순, 동점은 같은 순위, 공동 5위까지 (0표 제외)
     const sorted = [...res.songs].sort((a, b) => b.votes - a.votes || a.order - b.order);
     let pos = 0;
     const ranked = sorted.map((s, i) => { if (i === 0 || s.votes !== sorted[i - 1].votes) pos = i + 1; return { ...s, pos }; })
       .filter((s) => s.pos <= 5 && s.votes > 0);
-    html = `<span class="status open"><span class="dot"></span>TOP 5</span>
-      <ol class="rank ${ranked.length > 7 ? 'cols' : ranked.length > 5 ? 'many' : ''}" style="grid-template-rows: repeat(${Math.ceil(ranked.length / 2)}, auto)">${ranked.map((s) => {
-        const pos = s.pos;
-        const cls = [s.votes > 0 && pos <= 3 ? 'podium' : '', s.votes > 0 && pos === 1 ? 'top1' : '', s.votes === 0 ? 'zero' : ''].join(' ');
-        return `<li class="${cls}"><span class="pos">${pos}</span>
-          <span class="t"><b>${esc(s.title)}</b><small><span class="team team-${s.team}">${esc(S.teams[s.team])}</span>${esc(s.artist)}</small></span>
-          <span class="v"><span class="fsg" aria-hidden="true"></span> ${s.votes}</span></li>`;
-      }).join('')}</ol>`;
-  } else if (!active) {
-    html = `<h1 class="idle-brand"><span>Feel</span><span>So</span><span>Good</span></h1>
-      <div class="idle-sub">: The generation . . .</div>
-      <div class="idle-when">${esc(S.eventTitle)} · 11/26 THU 학생회관 소극장 19:00</div>`;
-  } else {
-    const st = S.phase === 'performing' ? ['live', 'NOW ON STAGE'] : S.phase === 'voting' ? ['open', S.closing ? 'LAST CALL' : 'VOTE OPEN'] : ['', 'VOTE CLOSED'];
-    const call = S.phase === 'voting' && S.closing
-      ? `<div class="call open"><span class="fsg" aria-hidden="true"></span> 투표 마감까지 <b class="cdbig" data-cd>${secsLeft()}</b>초!</div>`
-      : S.phase === 'closed' ? '<div class="call">투표가 마감됐어요 · 다음 무대를 기다려 주세요</div>'
-      : '';
-    html = `<span class="status ${st[0]}"><span class="dot"></span>${st[1]}</span>
-      <div style="margin-top:1.8vw"><span class="team team-${c.team}">${esc(S.teams[c.team])}</span></div>
-      <div class="title">${esc(c.title)}</div>
-      <div class="artist">${esc(c.artist)}</div>${call}`;
+    $('result').innerHTML = `<h2>TOP 5</h2>
+      <ol class="rank ${ranked.length > 7 ? 'cols' : ranked.length > 5 ? 'many' : ''}" style="grid-template-rows: repeat(${Math.ceil(ranked.length / 2)}, auto)">${ranked.map((s) => `
+        <li class="${s.pos <= 3 ? 'podium' : ''} ${s.pos === 1 ? 'top1' : ''}">
+          <span class="pos">${s.pos}</span>
+          <span class="tm ${s.team}">${esc(S.teams[s.team])}</span>
+          <span class="t"><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span>
+          <span class="v"><span class="fsg" aria-hidden="true"></span> ${s.votes}</span>
+        </li>`).join('') || '<li><span></span><span></span><span class="t"><b>아직 집계된 표가 없어요</b></span></li>'}</ol>`;
   }
-  $('main').innerHTML = html;
 }
 
 load();
