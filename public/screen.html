@@ -44,17 +44,7 @@
   body[data-mode="closing"] .frame { animation-duration: 0.5s; }
   @keyframes glow { 50% { box-shadow: inset 0 0 0 0.8vw var(--team), inset 0 0 5vw var(--team); } }
 
-  /* ---------- 공연 중 테두리: 도는 빛 + 진동 ---------- */
-  .orbit { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 6; pointer-events: none; overflow: hidden; opacity: 0; transition: opacity 0.6s;
-    padding: 0.75vw;
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
-  .orbit i { position: absolute; left: 50%; top: 50%; width: 260vmax; height: 260vmax; margin: -130vmax 0 0 -130vmax;
-    background: conic-gradient(from 0deg, transparent 0deg 250deg, var(--team) 300deg, #ffffff 330deg, var(--team) 345deg, transparent 360deg);
-    animation: orbit 3.2s linear infinite; }
-  .orbit i + i { animation-delay: -1.6s; }
-  @keyframes orbit { to { transform: rotate(360deg); } }
-  body[data-mode="performing"] .orbit { opacity: 1; }
+  /* ---------- 공연 중 테두리: 진동 ---------- */
   /* 베이스 박자처럼 테두리가 쿵쿵 */
   body[data-mode="performing"] .frame { animation: thump 0.55s cubic-bezier(.2,.8,.3,1) infinite; }
   @keyframes thump {
@@ -151,7 +141,6 @@
 <div class="tint"></div>
 <div class="tint2"></div>
 <div class="frame"></div>
-<div class="orbit" aria-hidden="true"><i></i><i></i></div>
 
 <div class="eq" id="eq" aria-hidden="true"></div>
 <header class="head" id="head"></header>
