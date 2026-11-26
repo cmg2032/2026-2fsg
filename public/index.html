@@ -409,7 +409,7 @@ function render() {
       <button class="vote wait" disabled><span class="logo" aria-hidden="true"></span>MIC CHECK</button>
       <div class="hint">화면을 켜 둔 채로 기다려 주세요</div>`;
   } else {
-    const st = S.phase === 'performing' ? ['live', 'LIVE NOW'] : S.phase === 'voting' ? ['open', S.closing ? 'LAST CALL' : 'VOTE OPEN'] : ['', 'VOTE CLOSED'];
+    const st = S.phase === 'performing' ? ['live', 'LIVE NOW'] : S.phase === 'voting' ? (S.closing ? ['open', 'LAST CALL'] : S.onStage ? ['live', 'LIVE NOW'] : ['open', 'VOTE OPEN']) : ['', 'VOTE CLOSED'];
     const head = `<span class="status ${st[0]}"><span class="dot"></span>${st[1]}</span>
       <div><span class="team team-${c.team}">${esc(S.teams[c.team])}</span></div>
       <div class="song-title">${esc(c.title)}</div>

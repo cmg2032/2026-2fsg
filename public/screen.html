@@ -175,7 +175,7 @@ async function load() {
   let S;
   try { S = await (await fetchT('/api/state', { cache: 'no-store' })).json(); netOk(); } catch { netFail(); return; }
   syncDeadline(S);
-  const key = JSON.stringify([S.current, S.phase, S.closing, S.showResults, S.results, S.teams]);
+  const key = JSON.stringify([S.current, S.phase, S.closing, S.onStage, S.showResults, S.results, S.teams]);
   if (key === lastKey) return;
   lastKey = key;
   render(S);
@@ -185,7 +185,8 @@ function render(S) {
   const c = S.current;
   const res = S.showResults && S.results;
   const active = c && S.phase !== 'idle';
-  const mode = res ? 'results' : !active ? 'idle' : S.phase === 'voting' ? (S.closing ? 'closing' : 'voting') : S.phase;
+  // 공연 중(onStage)엔 투표가 열려 있어도 화면은 NOW ON STAGE
+  const mode = res ? 'results' : !active ? 'idle' : S.phase === 'voting' ? (S.closing ? 'closing' : S.onStage ? 'performing' : 'voting') : S.phase;
   document.body.dataset.mode = mode;
   // 팀 차례: 결과 발표·대기 중에는 원래 포스터 색
   if (active && !res) document.body.dataset.team = c.team; else delete document.body.dataset.team;

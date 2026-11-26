@@ -37,6 +37,7 @@ function defaultState() {
     currentSongId: null,
     phase: 'idle', // idle | performing | voting | closed
     closingAt: null, // 마감 카운트다운 중이면 닫히는 시각(ms)
+    onStage: false, // 공연 중 표시 (투표는 열려 있지만 화면엔 LIVE / NOW ON STAGE)
     showResults: false,
     votes: {}, // songId -> { deviceId: 투표 횟수(1~VOTES_PER_SONG) }
     epoch: crypto.randomBytes(6).toString('hex'), // 초기화할 때마다 바뀌는 회차 값
@@ -112,6 +113,7 @@ function publicState(deviceId) {
     current,
     phase: state.phase,
     closing: !!state.closingAt,
+    onStage: !!state.onStage && state.phase === 'voting' && !state.closingAt,
     closeIn: state.closingAt ? Math.max(0, state.closingAt - Date.now()) : null,
     myVotes,
     myCounts,
@@ -274,16 +276,22 @@ const server = http.createServer(async (req, res) => {
         const { action, songId } = body;
         const exists = state.songs.some((s) => s.id === songId);
         if (action === 'perform' && exists) {
+          // 공연 시작: 투표가 바로 열리고 화면엔 '공연 중' 표시 (받은 표는 유지)
           cancelClose();
           state.currentSongId = songId;
-          state.phase = 'performing';
+          state.phase = 'voting';
+          state.onStage = true;
+        } else if (action === 'endPerform') {
+          // 공연 끝: 투표는 계속 열려 있고 화면 표시만 VOTE OPEN으로
+          if (state.phase === 'voting') state.onStage = false;
         } else if (action === 'open' && exists) {
           cancelClose();
           state.currentSongId = songId;
           state.phase = 'voting';
+          state.onStage = false;
         } else if (action === 'close') {
           // 10초 카운트다운 후 마감 (이미 카운트다운 중이면 그대로 둠)
-          if (state.currentSongId && state.phase === 'voting' && !state.closingAt) scheduleClose(Date.now() + CLOSE_COUNTDOWN_MS);
+          if (state.currentSongId && state.phase === 'voting' && !state.closingAt) { state.onStage = false; scheduleClose(Date.now() + CLOSE_COUNTDOWN_MS); }
         } else if (action === 'closeNow') {
           cancelClose();
           if (state.currentSongId && state.phase === 'voting') state.phase = 'closed';
