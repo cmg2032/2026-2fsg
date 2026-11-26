@@ -25,7 +25,7 @@ function defaultState() {
     songs: [
       { id: "3332a5c5", order: 1, team: "A", title: "Bad Boy", artist: "박민성 이상민 최민규" },
       { id: "80318947", order: 2, team: "B", title: "Hash tag", artist: "권민경 김미수 윤서영" },
-      { id: "d731f4f2", order: 3, team: "A", title: "박민성바보", artist: "박민성 유재영 이정호" },
+      { id: "d731f4f2", order: 3, team: "A", title: "Best mo'fxxkers", artist: "박민성 유재영 이정호" },
       { id: "a8c598d0", order: 4, team: "B", title: "fix!", artist: "장용석 전지훈 최지환 허지효" },
       { id: "172966ba", order: 5, team: "A", title: "움직여", artist: "이상민 최재형 홍두영" },
       { id: "4e343a49", order: 6, team: "B", title: "사랑으로 ㅗ", artist: "김도현 송정하 최지환 황준호" },
