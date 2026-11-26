@@ -20,7 +20,7 @@ if (!process.env.ADMIN_PASSWORD) {
 function defaultState() {
   return {
     eventTitle: "2026-2 정기공연",
-    eventInfo: "공연이 끝날 때마다 마음에 든 무대에 투표해주세요!\n무대당 두번까지 투표 가능합니다!!",
+    eventInfo: "무대가 시작되면 마음에 든 무대에 투표해주세요!\n무대당 두번까지 투표 가능합니다!!",
     teams: { A: "OB", B: "YB" },
     songs: [
       { id: "3332a5c5", order: 1, team: "A", title: "Bad Boy", artist: "박민성 이상민 최민규" },
