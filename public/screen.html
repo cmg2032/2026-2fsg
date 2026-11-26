@@ -222,6 +222,9 @@ function placeQR() {
   qr.style.setProperty('--qs', size + 'px');
 }
 addEventListener('resize', placeQR);
+// 글꼴이 늦게 내려오거나 제목 줄 수가 바뀌어 위쪽 영역 높이가 달라지면 다시 배치
+if (window.ResizeObserver) new ResizeObserver(() => placeQR()).observe($('head'));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeQR);
 
 let lastKey = '';
 async function load() {
