@@ -166,14 +166,17 @@ function sendJSON(res, code, data) {
   res.end(JSON.stringify(data));
 }
 
-function readBody(req) {
+// limit: 받을 수 있는 최대 크기 (백업 복원은 관객 수에 따라 커서 넉넉하게)
+function readBody(req, limit = 1e5) {
   return new Promise((resolve) => {
-    let buf = '';
+    let buf = '', over = false;
     req.on('data', (c) => {
+      if (over) return;
       buf += c;
-      if (buf.length > 1e5) req.destroy();
+      if (buf.length > limit) { over = true; resolve({ __tooBig: true }); req.resume(); }
     });
     req.on('end', () => {
+      if (over) return;
       try {
         resolve(buf ? JSON.parse(buf) : {});
       } catch {
@@ -186,7 +189,7 @@ function readBody(req) {
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.jpg': 'image/jpeg', '.woff2': 'font/woff2' };
 
 function serveStatic(req, res, pathname) {
-  const routes = { '/': 'index.html', '/admin': 'admin.html', '/screen': 'screen.html' };
+  const routes = { '/': 'index.html', '/admin': 'admin.html', '/screen': 'screen.html', '/favicon.ico': 'fsg-icon.png' };
   const file = routes[pathname] || pathname.slice(1);
   const full = path.join(PUBLIC_DIR, file);
   if (!full.startsWith(PUBLIC_DIR + path.sep)) return sendJSON(res, 403, { error: 'forbidden' });
@@ -206,6 +209,7 @@ const server = http.createServer(async (req, res) => {
   try {
     tick();
     p = new URL(req.url, 'http://x').pathname;
+    if (p.length > 1 && p.endsWith('/')) p = p.replace(/\/+$/, '');
     // 관객 API
     if (p === '/api/state' && req.method === 'GET') {
       const deviceId = getDeviceId(req, res);
@@ -239,7 +243,8 @@ const server = http.createServer(async (req, res) => {
 
     if (p.startsWith('/api/admin/')) {
       if (!isAdmin(req)) return sendJSON(res, 401, { error: '로그인이 필요해요.' });
-      const body = req.method === 'POST' ? await readBody(req) : {};
+      const body = req.method === 'POST' ? await readBody(req, p === '/api/admin/restore' ? 50e6 : 1e5) : {};
+      if (body.__tooBig) return sendJSON(res, 413, { error: '보낸 데이터가 너무 커요.' });
 
       if (p === '/api/admin/state') {
         return sendJSON(res, 200, { ...publicState(''), ...results(), showResults: state.showResults, totalDevices: new Set(Object.values(state.votes).flatMap(Object.keys)).size });

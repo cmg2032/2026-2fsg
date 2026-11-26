@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8" />
+<link rel="icon" type="image/png" href="/fsg-icon.png" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#262a78" />
 <title>Feel So Good · 무대 투표</title>
@@ -407,7 +408,7 @@ function render() {
   if (!c || S.phase === 'idle') {
     now.innerHTML = `<span class="status"><span class="dot"></span>STANDBY</span>
       <div class="song-title" style="font-size:24px">곧 무대가 시작돼요</div>
-      <div class="song-artist">무대가 끝날 때마다 이 화면에서 투표가 열려요</div>
+      <div class="song-artist">무대가 시작되면 이 화면에서 투표가 열려요</div>
       <button class="vote wait" disabled><span class="logo" aria-hidden="true"></span>MIC CHECK</button>
       <div class="hint">화면을 켜 둔 채로 기다려 주세요</div>`;
   } else {
