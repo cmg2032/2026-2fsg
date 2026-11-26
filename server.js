@@ -293,6 +293,17 @@ const server = http.createServer(async (req, res) => {
           cancelClose();
           state.currentSongId = null;
           state.phase = 'idle';
+        } else if (action === 'firstTeam' && (body.value === 'A' || body.value === 'B')) {
+          // 선공 팀 바꾸기: 1·2번, 3·4번 ... 짝마다 선공 팀 곡이 앞에 오도록 정렬 (표·진행 상태는 그대로)
+          const sorted = [...state.songs].sort((a, b) => a.order - b.order);
+          const out = [];
+          for (let i = 0; i < sorted.length; i += 2) {
+            const pair = sorted.slice(i, i + 2);
+            if (pair.length === 2 && pair[0].team !== pair[1].team && pair[0].team !== body.value) pair.reverse();
+            out.push(...pair);
+          }
+          out.forEach((s, i) => (s.order = i + 1));
+          state.songs = out;
         } else if (action === 'showResults') {
           state.showResults = !!body.value;
         } else {

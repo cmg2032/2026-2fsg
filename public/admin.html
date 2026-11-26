@@ -93,6 +93,13 @@
   .switch { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 0; color: var(--ink); }
   .switch input { width: 18px; height: 18px; accent-color: var(--lime); }
 
+  /* 선공 팀 전환 */
+  .order-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 10px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+  .seg button { padding: 9px 16px; font-size: 14px; font-weight: 800; color: var(--muted); background: rgba(16,18,60,0.5); border: 0; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--lime); color: #1d2160; }
+  .seg button:not(.on):hover { color: var(--ink); background: rgba(184,189,246,0.15); }
   /* 진행 */
   .songs { display: flex; flex-direction: column; gap: 8px; }
   .song { display: grid; grid-template-columns: 30px 1fr auto; gap: 12px; align-items: center; padding: 12px 14px;
@@ -175,6 +182,11 @@
     </div>
 
     <h2>CUE SHEET <span class="ko">진행 · 공연 순서</span></h2>
+    <div class="order-bar">
+      <span class="muted small">공연 순서</span>
+      <div class="seg" id="firstTeam"></div>
+      <span class="muted small" id="orderHint"></span>
+    </div>
     <div class="songs" id="songs"></div>
 
     <h2>EVENT <span class="ko">행사 정보</span></h2>
@@ -316,6 +328,12 @@ function renderLive() {
   q.innerHTML = btns.map(([t, a, id, p], i) => `<button class="btn ${p ? 'btn-primary' : ''}" data-i="${i}">${esc(t)}</button>`).join('');
   q.querySelectorAll('button').forEach((b) => { const [, a, id] = btns[b.dataset.i]; b.onclick = () => control(a, id); });
 
+  // 선공 팀 표시: 1번 곡의 팀이 선공
+  const first = S.songs[0] ? S.songs[0].team : 'A';
+  $('firstTeam').innerHTML = ['A', 'B'].map((t) => `<button data-t="${t}" class="${first === t ? 'on' : ''}">${esc(S.teams[t])}팀 선공</button>`).join('');
+  $('firstTeam').querySelectorAll('button').forEach((b) => (b.onclick = () => setFirstTeam(b.dataset.t)));
+  $('orderHint').textContent = `지금: ${S.songs.map((s) => S.teams[s.team]).join(' → ')}`;
+
   // 곡별 득표 순위 (동점이면 같은 순위, 같은 표수 안에서는 공연 순서대로)
   const sorted = [...S.songs].sort((a, b) => b.votes - a.votes || a.order - b.order);
   const top = Math.max(1, sorted[0] ? sorted[0].votes : 1);
@@ -373,6 +391,18 @@ function confirmControl(action, songId, value) {
   if (action === 'showResults' && value)
     return confirm('관객 휴대폰과 대형 화면에 결과(TOP 5)가 공개돼요.\n지금 공개할까요?');
   return true;
+}
+
+// 선공 팀 바꾸기 (1·2번, 3·4번 … 짝마다 자리 교체)
+async function setFirstTeam(t) {
+  if (!S || (S.songs[0] && S.songs[0].team === t)) return;
+  const busy = S.current && S.phase !== 'idle';
+  const msg = `${S.teams[t]}팀 선공으로 바꿀까요?\n1↔2번, 3↔4번, 5↔6번 … 곡 순서가 서로 바뀌어요.` +
+    (busy ? `\n\n지금 진행 중인 무대가 있어요. 받은 표는 그대로 유지돼요.` : '');
+  if (!confirm(msg)) return;
+  try { await api('control', { action: 'firstTeam', value: t }); } catch { return; }
+  toast(`${S.teams[t]}팀 선공으로 바꿨어요`);
+  await load(true);
 }
 
 async function control(action, songId, value) {
