@@ -273,8 +273,10 @@
     <ol class="ranking" id="ranking"></ol>
   </div>
 
-  <div class="sec">SETLIST</div>
-  <ul class="setlist" id="setlist"></ul>
+  <div id="setlistBox" hidden>
+    <div class="sec">SETLIST</div>
+    <ul class="setlist" id="setlist"></ul>
+  </div>
 
   <div class="foot">
     <div id="eventInfo" style="white-space: pre-line"></div>
@@ -400,7 +402,7 @@ function render() {
   document.body.classList.toggle('active', !!c && S.phase !== 'idle');
   if (asking && (!c || c.id !== asking || S.phase !== 'voting' || myCount(asking) >= MAXV())) {
     closeAsk();
-    if (S.phase !== 'voting') toast('투표가 마감됐어요');
+    if (S.phase !== 'voting') toast('투표 마감');
   }
   if (!c || S.phase === 'idle') {
     now.innerHTML = `<span class="status"><span class="dot"></span>STANDBY</span>
@@ -456,7 +458,8 @@ function render() {
     const max = Math.max(1, sorted[0] ? sorted[0].votes : 1);
     let pos = 0;
     const ranked = sorted.map((s, i) => { if (i === 0 || s.votes !== sorted[i - 1].votes) pos = i + 1; return { ...s, pos }; })
-      .filter((s) => s.pos <= 5 && s.votes > 0);
+      .filter((s) => s.pos <= 5 && s.votes > 0)
+      .slice(0, 10); // 공동 순위가 많아도 최대 10개 무대
     $('ranking').innerHTML = ranked.length ? ranked.map((s) => {
       const pos = s.pos;
       const cls = [s.votes > 0 && pos <= 3 ? 'top' : '', s.votes > 0 && pos === 1 ? 'top1' : '', s.votes === 0 ? 'zero' : ''].join(' ');
@@ -469,7 +472,10 @@ function render() {
     }).join('') : '<li><span></span><span class="t"><b>아직 집계된 표가 없어요</b></span></li>';
   }
 
-  $('setlist').innerHTML = S.songs.map((s) => `
+  // 셋리스트: 이미 공연이 끝난 곡만 보여줌
+  const done = S.songs.filter((s) => (S.done || []).includes(s.id));
+  $('setlistBox').hidden = done.length === 0;
+  $('setlist').innerHTML = done.map((s) => `
     <li class="${c && s.id === c.id && S.phase !== 'idle' ? 'cur' : ''}">
       <span class="no">${pad(s.order)}</span>
       <span class="t"><b>${esc(s.title)}</b><small><span class="team team-${s.team}">${esc(S.teams[s.team])}</span>${esc(s.artist)}</small></span>

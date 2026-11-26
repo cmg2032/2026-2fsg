@@ -38,6 +38,7 @@ function defaultState() {
     phase: 'idle', // idle | performing | voting | closed
     closingAt: null, // 마감 카운트다운 중이면 닫히는 시각(ms)
     onStage: false, // 공연 중 표시 (투표는 열려 있지만 화면엔 LIVE / NOW ON STAGE)
+    done: [], // 공연이 끝난(투표 마감된) 곡 id — 관객 셋리스트에 이것만 보여줌
     showResults: false,
     votes: {}, // songId -> { deviceId: 투표 횟수(1~VOTES_PER_SONG) }
     epoch: crypto.randomBytes(6).toString('hex'), // 초기화할 때마다 바뀌는 회차 값
@@ -52,12 +53,15 @@ try {
   state = defaultState();
 }
 if (!state.epoch) state.epoch = crypto.randomBytes(6).toString('hex');
+if (!Array.isArray(state.done)) state.done = [];
+// 곡이 끝났음을 기록 (투표 마감되거나, 다른 곡으로 넘어갈 때)
+function markDone(id) { if (id && !state.done.includes(id)) state.done.push(id); }
 
 // ---------- 마감 카운트다운 ----------
 let closeTimer = null;
 function finishClose() {
   clearTimeout(closeTimer); closeTimer = null;
-  if (state.closingAt && state.phase === 'voting') state.phase = 'closed';
+  if (state.closingAt && state.phase === 'voting') { state.phase = 'closed'; markDone(state.currentSongId); }
   state.closingAt = null;
   save();
 }
@@ -120,6 +124,7 @@ function publicState(deviceId) {
     votesPerSong: VOTES_PER_SONG,
     showResults: state.showResults,
     epoch: state.epoch,
+    done: state.done.filter((id) => !(id === state.currentSongId && state.phase === 'voting')),
   };
   if (state.showResults) out.results = results();
   return out;
@@ -262,6 +267,7 @@ const server = http.createServer(async (req, res) => {
         }));
         const ids = new Set(state.songs.map((s) => s.id));
         Object.keys(state.votes).forEach((k) => !ids.has(k) && delete state.votes[k]);
+        state.done = state.done.filter((id) => ids.has(id));
         if (!ids.has(state.currentSongId)) {
           cancelClose();
           state.currentSongId = null;
@@ -276,6 +282,7 @@ const server = http.createServer(async (req, res) => {
         const exists = state.songs.some((s) => s.id === songId);
         if (action === 'perform' && exists) {
           // 공연 시작: 투표가 바로 열리고 화면엔 '공연 중' 표시 (받은 표는 유지)
+          if (state.currentSongId && state.currentSongId !== songId && state.phase !== 'idle') markDone(state.currentSongId);
           cancelClose();
           state.currentSongId = songId;
           state.phase = 'voting';
@@ -284,6 +291,7 @@ const server = http.createServer(async (req, res) => {
           // 공연 끝: 투표는 계속 열려 있고 화면 표시만 VOTE OPEN으로
           if (state.phase === 'voting') state.onStage = false;
         } else if (action === 'open' && exists) {
+          if (state.currentSongId && state.currentSongId !== songId && state.phase !== 'idle') markDone(state.currentSongId);
           cancelClose();
           state.currentSongId = songId;
           state.phase = 'voting';
@@ -293,10 +301,11 @@ const server = http.createServer(async (req, res) => {
           if (state.currentSongId && state.phase === 'voting' && !state.closingAt) { state.onStage = false; scheduleClose(Date.now() + CLOSE_COUNTDOWN_MS); }
         } else if (action === 'closeNow') {
           cancelClose();
-          if (state.currentSongId && state.phase === 'voting') state.phase = 'closed';
+          if (state.currentSongId && state.phase === 'voting') { state.phase = 'closed'; markDone(state.currentSongId); }
         } else if (action === 'cancelClose') {
           cancelClose();
         } else if (action === 'idle') {
+          if (state.currentSongId && state.phase !== 'idle') markDone(state.currentSongId);
           cancelClose();
           state.currentSongId = null;
           state.phase = 'idle';
@@ -323,6 +332,7 @@ const server = http.createServer(async (req, res) => {
       if (p === '/api/admin/reset') {
         cancelClose();
         state.votes = {};
+        state.done = [];
         state.epoch = crypto.randomBytes(6).toString('hex');
         state.currentSongId = null;
         state.phase = 'idle';
@@ -357,6 +367,7 @@ const server = http.createServer(async (req, res) => {
           onStage: !!b.onStage,
           closingAt: null,
           showResults: !!b.showResults,
+          done: Array.isArray(b.done) ? b.done.map(String) : [],
         };
         if (!state.songs.some((x) => x.id === state.currentSongId)) { state.currentSongId = null; state.phase = 'idle'; }
         save();
