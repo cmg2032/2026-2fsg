@@ -82,9 +82,11 @@
   body.active .tagline, body.active .when { display: none; }
   body.active .event { font-size: 14px; margin-top: 6px; color: var(--lav-2); }
   /* 2부 · OB vs YB */
-  .part { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .part { display: flex; align-items: center; gap: 10px; margin-top: 8px; max-width: 100%; min-width: 0; }
+  .part .no { flex: none; }
   .part .no { font-size: 13px; font-weight: 800; color: #1d2160; background: var(--lime); padding: 2px 9px; border-radius: 2px; }
-  .part .vs { font-family: var(--display); font-size: 22px; letter-spacing: 0.04em; }
+  .part .vs { font-family: var(--display); font-size: 22px; letter-spacing: 0.04em;
+    min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* 팀 이름이 길어도 한 줄, 넘치면 … */
   .part .vs .a { color: var(--lime); } .part .vs .b { color: var(--lav); }
   .part .vs i { font-style: normal; font-size: 14px; color: var(--muted); margin: 0 6px; vertical-align: 2px; }
   body.active .part { margin-top: 4px; gap: 8px; }
