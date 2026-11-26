@@ -393,6 +393,19 @@ function confirmControl(action, songId, value) {
     return confirm(`"${name(cur)}" 투표가 진행 중이에요.\n마감하지 않고 대기 화면으로 갈까요?`);
   if (action === 'showResults' && value)
     return confirm('관객 휴대폰과 대형 화면에 결과(TOP 5)가 공개돼요.\n지금 공개할까요?');
+  // 진행 버튼은 항상 한 번 더 확인
+  if (action === 'perform' && target) {
+    const again = cur && cur.id === target.id && S.phase === 'closed';
+    return confirm(again
+      ? `"${name(target)}" 공연을 다시 시작할까요?\n\n투표가 다시 열려요. (받은 표는 그대로 유지)`
+      : `"${name(target)}" 공연을 시작할까요?\n\n누르는 즉시 투표가 열리고, 화면에 NOW ON STAGE가 표시돼요.`);
+  }
+  if (action === 'endPerform' && cur)
+    return confirm(`"${name(cur)}" 공연을 끝낼까요?\n\n화면이 VOTE OPEN으로 바뀌어요. 투표는 계속 열려 있어요.`);
+  if (action === 'close' && cur)
+    return confirm(`"${name(cur)}" 투표를 마감할까요?\n\n10초 카운트다운 후 투표가 닫혀요.`);
+  if (action === 'closeNow' && cur)
+    return confirm(`"${name(cur)}" 투표를 카운트다운 없이 지금 바로 닫을까요?`);
   return true;
 }
 
