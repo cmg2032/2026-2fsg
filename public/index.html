@@ -81,6 +81,16 @@
   body.active .eq { height: 46px; width: 40%; }
   body.active .tagline, body.active .when { display: none; }
   body.active .event { font-size: 14px; margin-top: 6px; color: var(--lav-2); }
+  /* 2부 · OB vs YB */
+  .part { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .part .no { font-size: 13px; font-weight: 800; color: #1d2160; background: var(--lime); padding: 2px 9px; border-radius: 2px; }
+  .part .vs { font-family: var(--display); font-size: 22px; letter-spacing: 0.04em; }
+  .part .vs .a { color: var(--lime); } .part .vs .b { color: var(--lav); }
+  .part .vs i { font-style: normal; font-size: 14px; color: var(--muted); margin: 0 6px; vertical-align: 2px; }
+  body.active .part { margin-top: 4px; gap: 8px; }
+  body.active .part .no { font-size: 11px; padding: 1px 7px; }
+  body.active .part .vs { font-size: 15px; }
+  body.active .part .vs i { font-size: 11px; vertical-align: 1px; }
   body.active .band { margin-top: 14px; height: 28px; }
   body.active .panel { margin-top: 14px; padding-top: 16px; }
   body.active .vote { margin-top: 18px; }
@@ -261,6 +271,7 @@
     <h1 class="brand"><span>Feel</span><span>So</span><span>Good</span></h1>
     <div class="tagline">: The generation . . .</div>
     <div class="event" id="eventTitle"></div>
+    <div class="part"><span class="no">2부</span><span class="vs" id="vsLine"><span class="a">OB</span><i>vs</i><span class="b">YB</span></span></div>
     <div class="when"><b>11/26 THU</b> · 학생회관 소극장 <b>19:00</b></div>
   </header>
 
@@ -395,6 +406,7 @@ const pad = (n) => String(n).padStart(2, '0');
 
 function render() {
   $('eventTitle').textContent = S.eventTitle;
+  $('vsLine').innerHTML = `<span class="a">${esc(S.teams.A)}</span><i>vs</i><span class="b">${esc(S.teams.B)}</span>`;
   $('eventInfo').textContent = S.eventInfo;
   document.title = 'Feel So Good · ' + S.eventTitle;
 
