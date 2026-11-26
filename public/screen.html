@@ -98,11 +98,11 @@
   @keyframes tick { from { transform: scale(1.4); } }
 
   /* ---------- 투표 중 가운데 QR (운영 콘솔에서 켜고 끔) ---------- */
-  .qr { position: fixed; left: 50%; top: 55%; z-index: 3; transform: translate(-50%, -50%) scale(0.9); opacity: 0; pointer-events: none;
+  .qr { position: fixed; left: 50%; top: var(--qtop, 40vh); z-index: 3; transform: translate(-50%, 0) scale(0.9); transform-origin: 50% 0; opacity: 0; pointer-events: none;
     transition: opacity 0.5s, transform 0.5s; text-align: center; padding: 1.4vw 1.4vw 1.1vw; background: rgba(14, 16, 52, 0.82);
     border: 0.25vw solid var(--team, var(--lime)); box-shadow: 0 0 3vw var(--team-glow, rgba(200,242,90,0.5)), 0 1.5vw 4vw rgba(0,0,0,0.5); }
-  body.qr-on[data-mode="voting"] .qr, body.qr-on[data-mode="closing"] .qr { opacity: 1; transform: translate(-50%, -50%); }
-  .qr .code { width: 19vw; height: 19vw; background: #fff; padding: 0.9vw; }
+  body.qr-on[data-mode="voting"] .qr, body.qr-on[data-mode="closing"] .qr { opacity: 1; transform: translate(-50%, 0); }
+  .qr .code { width: var(--qs, 19vw); height: var(--qs, 19vw); background: #fff; padding: 0.9vw; box-sizing: border-box; }
   .qr .code svg { display: block; width: 100%; height: 100%; }
   .qr .t1 { font-family: var(--display); font-size: 1.7vw; letter-spacing: 0.14em; margin-top: 0.9vw; color: var(--team, var(--lime)); }
   .qr .t2 { font-size: 1vw; color: var(--muted); margin-top: 0.3vw; }
@@ -211,6 +211,18 @@ setInterval(() => {
   catch (e) { $('qrcode').textContent = url; }
 })();
 
+// QR은 위쪽 곡 정보(제목·카운트다운) 바로 아래에 붙이고, 남은 공간에 맞춰 크기 조절 → 카운트다운을 가리지 않음
+function placeQR() {
+  const qr = document.querySelector('.qr'), head = $('head');
+  const W = innerWidth, H = innerHeight;
+  const top = head.offsetHeight - 0.02 * W;            // 곡 정보 영역 아래 (아래쪽 흐림 여백만큼 살짝 겹침)
+  const textH = qr.querySelector('.t1').offsetHeight + qr.querySelector('.t2').offsetHeight + 0.05 * W; // 글자 + 여백
+  const size = Math.max(140, Math.min(0.19 * W, H - top - textH - 0.03 * W));
+  qr.style.setProperty('--qtop', top + 'px');
+  qr.style.setProperty('--qs', size + 'px');
+}
+addEventListener('resize', placeQR);
+
 let lastKey = '';
 async function load() {
   let S;
@@ -235,6 +247,7 @@ function render(S) {
   const mode = res ? 'results' : !active ? 'idle' : S.phase === 'voting' ? (S.closing ? 'closing' : S.onStage ? 'performing' : 'voting') : S.phase;
   document.body.dataset.mode = mode;
   document.body.classList.toggle('qr-on', !!S.showQR);
+  requestAnimationFrame(placeQR);
   // 팀 차례: 결과 발표·대기 중에는 원래 포스터 색
   if (active && !res) document.body.dataset.team = c.team; else delete document.body.dataset.team;
 
